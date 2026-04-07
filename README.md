@@ -260,9 +260,13 @@ sshroute list -o yaml          # YAML
 sshroute network list -o json
 ```
 
-## Contributing
+## Community
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to set up the project, run tests, and open a pull request.
+**Get the software** — download a pre-built binary from [Releases](https://github.com/thereisnotime/sshroute/releases), install with `go install github.com/thereisnotime/sshroute@latest`, or [build from source](#building-from-source).
+
+**Feedback and bug reports** — open an issue on [GitHub Issues](https://github.com/thereisnotime/sshroute/issues). Use the bug report template for unexpected behaviour and the feature request template for ideas.
+
+**Contributing** — see [CONTRIBUTING.md](CONTRIBUTING.md) for how to set up the project, run tests, and open a pull request. Security vulnerabilities should be reported privately via [GitHub Security Advisories](https://github.com/thereisnotime/sshroute/security/advisories/new).
 
 ## Building from source
 
