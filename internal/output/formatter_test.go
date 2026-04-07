@@ -213,3 +213,39 @@ func TestYAMLFormatter_WriteError(t *testing.T) {
 		t.Fatal("expected error from failing writer")
 	}
 }
+
+// testRowNoTag has no table struct tags, exercising the tag=="" → field-name branch.
+type testRowNoTag struct {
+	Name  string
+	Value int
+}
+
+// TestTableFormatter_NoTagFallsBackToFieldName covers the tag=="" branch (line 62-64)
+// where the field name is used as the column header.
+func TestTableFormatter_NoTagFallsBackToFieldName(t *testing.T) {
+	rows := []testRowNoTag{{"alice", 7}}
+	var buf bytes.Buffer
+	if err := New(FormatTable).Format(&buf, rows); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	out := buf.String()
+	// go-pretty uppercases all headers, so "Name" renders as "NAME".
+	if !strings.Contains(out, "NAME") {
+		t.Errorf("table should contain field name as header (uppercase), got %q", out)
+	}
+}
+
+// TestTableFormatter_NonNilPointer covers the rv.Elem() branch (line 26) where
+// a non-nil pointer to a slice is passed — the formatter should dereference it
+// and render the slice normally.
+func TestTableFormatter_NonNilPointer(t *testing.T) {
+	rows := []testRow{{"x", 10}, {"y", 20}}
+	var buf bytes.Buffer
+	if err := New(FormatTable).Format(&buf, &rows); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "x") || !strings.Contains(out, "y") {
+		t.Errorf("expected row values in output, got %q", out)
+	}
+}
