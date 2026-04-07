@@ -1,0 +1,47 @@
+# Jump host / bastion config.
+#
+# Production servers are never directly exposed.
+# Different jump hosts are used depending on the network:
+#   - On the corporate VPN: use internal bastion (no public hop needed)
+#   - Everywhere else: jump through the public bastion first
+#
+# The exec check tests for a DNS record only resolvable on the corp network,
+# which is more reliable than pinging an IP that might be firewalled.
+
+networks:
+  corp:
+    priority: 10
+    checks:
+      - type: exec
+        command: "dig +short +time=1 bastion.corp.internal | grep -qE '^[0-9]'"
+
+hosts:
+  prod-api:
+    default:
+      host: prod-api.internal
+      port: 22
+      user: deploy
+      key: ~/.ssh/prod_key
+      jump: bastion.example.com
+
+    corp:
+      host: prod-api.internal
+      port: 22
+      user: deploy
+      key: ~/.ssh/prod_key
+      jump: bastion.corp.internal   # internal bastion, no public hop
+
+  prod-db:
+    default:
+      host: prod-db.internal
+      port: 22
+      user: postgres
+      key: ~/.ssh/prod_key
+      jump: bastion.example.com
+
+    corp:
+      host: prod-db.internal
+      port: 22
+      user: postgres
+      key: ~/.ssh/prod_key
+      jump: bastion.corp.internal

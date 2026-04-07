@@ -1,0 +1,65 @@
+# Multi-network config — office LAN, two VPNs, and a public fallback.
+#
+# Priority controls which network is checked first:
+#   10  → office LAN (fastest if you're there)
+#   20  → corp-vpn (WireGuard)
+#   30  → remote-vpn (OpenVPN)
+#   (no priority / default 0) → public fallback
+#
+# All checks within a network must pass (AND logic).
+
+networks:
+  office:
+    priority: 10
+    checks:
+      - type: ping
+        host: 192.168.1.1
+        timeout: 500ms
+
+  corp-vpn:
+    priority: 20
+    checks:
+      - type: interface
+        match: wg0
+      - type: route
+        match: 10.100.0.0
+
+  remote-vpn:
+    priority: 30
+    checks:
+      - type: interface
+        match: tun0
+
+hosts:
+  webserver:
+    default:
+      host: webserver.example.com
+      port: 22
+      user: deploy
+      key: ~/.ssh/id_ed25519
+    office:
+      host: 192.168.1.50
+      port: 22
+      user: deploy
+    corp-vpn:
+      host: 10.100.0.50
+      port: 2222
+      key: ~/.ssh/corp_key
+      jump: bastion.corp.internal
+    remote-vpn:
+      host: 10.8.0.50
+      port: 22
+
+  dbserver:
+    default:
+      host: db.example.com
+      port: 22
+      user: postgres
+      key: ~/.ssh/db_key
+    office:
+      host: 192.168.1.100
+      port: 22
+    corp-vpn:
+      host: 10.100.0.100
+      port: 22
+      jump: bastion.corp.internal

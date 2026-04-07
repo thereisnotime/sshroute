@@ -1,0 +1,35 @@
+# WireGuard backconnect config.
+#
+# A remote machine establishes a WireGuard tunnel back to you.
+# Its peer IP (10.100.200.5) is outside your normal WG CIDR.
+#
+# Strategy:
+#   1. Check if the peer's IP is routable AND reachable (priority 10).
+#      If yes → connect directly over the tunnel (fast, no exposure).
+#   2. Fall back to the machine's public SSH port if the tunnel is down.
+#
+# The route check confirms the WG peer route exists before we ping,
+# saving time when the tunnel is clearly not up.
+
+networks:
+  wg-peer:
+    priority: 10
+    checks:
+      - type: route
+        match: "10.100.200.5"
+      - type: ping
+        host: "10.100.200.5"
+        timeout: 2s
+
+hosts:
+  remote-machine:
+    default:
+      host: remote-machine.example.com
+      port: 22
+      user: admin
+      key: ~/.ssh/id_ed25519
+    wg-peer:
+      host: 10.100.200.5
+      port: 22
+      user: admin
+      key: ~/.ssh/wg_key

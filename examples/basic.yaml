@@ -1,0 +1,24 @@
+# Basic sshroute config — single host, two network profiles.
+#
+# When the VPN is up (tun0 interface is UP), connect to the internal IP.
+# Otherwise, fall back to the public hostname on the default port.
+
+networks:
+  vpn:
+    priority: 10
+    checks:
+      - type: interface
+        match: tun0
+
+hosts:
+  myserver:
+    default:
+      host: myserver.example.com
+      port: 22
+      user: alice
+      key: ~/.ssh/id_ed25519
+    vpn:
+      host: 10.8.0.50
+      port: 22
+      user: alice
+      key: ~/.ssh/vpn_key

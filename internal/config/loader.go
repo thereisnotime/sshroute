@@ -67,7 +67,7 @@ func Load(path string) (*Config, error) {
 		if os.IsNotExist(err) {
 			slog.Debug("config file not found, using empty config", "path", path)
 			return &Config{
-				Networks: make(map[string][]NetworkCheck),
+				Networks: make(map[string]NetworkDefinition),
 				Hosts:    make(map[string]HostConfig),
 			}, nil
 		}
@@ -81,7 +81,7 @@ func Load(path string) (*Config, error) {
 
 	// Ensure top-level maps are never nil.
 	if cfg.Networks == nil {
-		cfg.Networks = make(map[string][]NetworkCheck)
+		cfg.Networks = make(map[string]NetworkDefinition)
 	}
 	if cfg.Hosts == nil {
 		cfg.Hosts = make(map[string]HostConfig)

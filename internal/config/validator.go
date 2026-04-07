@@ -17,8 +17,8 @@ import (
 func Validate(cfg *Config) error {
 	var errs []error
 
-	for networkName, checks := range cfg.Networks {
-		for i, check := range checks {
+	for networkName, def := range cfg.Networks {
+		for i, check := range def.Checks {
 			prefix := fmt.Sprintf("network %q check[%d]", networkName, i)
 
 			switch check.Type {

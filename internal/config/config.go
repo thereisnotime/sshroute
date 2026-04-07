@@ -33,8 +33,16 @@ type SSHParams struct {
 // The "default" key is required and used as a fallback.
 type HostConfig map[string]SSHParams
 
+// NetworkDefinition groups the detection checks for one named network together
+// with an optional priority that controls evaluation order.
+// Lower priority values are evaluated first. The default is 0.
+type NetworkDefinition struct {
+	Priority int            `yaml:"priority,omitempty"`
+	Checks   []NetworkCheck `yaml:"checks"`
+}
+
 // Config is the top-level sshroute configuration structure.
 type Config struct {
-	Networks map[string][]NetworkCheck `yaml:"networks"`
-	Hosts    map[string]HostConfig     `yaml:"hosts"`
+	Networks map[string]NetworkDefinition `yaml:"networks"`
+	Hosts    map[string]HostConfig        `yaml:"hosts"`
 }

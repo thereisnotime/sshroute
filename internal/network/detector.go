@@ -4,6 +4,7 @@ package network
 import (
 	"fmt"
 	"log/slog"
+	"sort"
 	"time"
 
 	"github.com/thereisnotime/sshroute/internal/config"
@@ -11,18 +12,36 @@ import (
 
 const defaultPingTimeout = 2 * time.Second
 
-// Detect runs checks for each configured network in the order they appear in
-// the map. All checks for a network must pass (AND logic). Returns the name of
-// the first matching network, or "default" if none match.
-func Detect(networks map[string][]config.NetworkCheck) (string, error) {
-	for name, checks := range networks {
-		matched, err := runChecks(name, checks)
+// networkEntry pairs a network name with its definition for sorted iteration.
+type networkEntry struct {
+	name string
+	def  config.NetworkDefinition
+}
+
+// Detect runs checks for each configured network in priority order (lowest
+// priority value first). All checks for a network must pass (AND logic).
+// Returns the name of the first matching network, or "default" if none match.
+func Detect(networks map[string]config.NetworkDefinition) (string, error) {
+	entries := make([]networkEntry, 0, len(networks))
+	for name, def := range networks {
+		entries = append(entries, networkEntry{name: name, def: def})
+	}
+	// Sort: lower Priority value = evaluated first. Tie-break alphabetically.
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].def.Priority != entries[j].def.Priority {
+			return entries[i].def.Priority < entries[j].def.Priority
+		}
+		return entries[i].name < entries[j].name
+	})
+
+	for _, e := range entries {
+		matched, err := runChecks(e.name, e.def.Checks)
 		if err != nil {
-			return "", fmt.Errorf("network %q: %w", name, err)
+			return "", fmt.Errorf("network %q: %w", e.name, err)
 		}
 		if matched {
-			slog.Debug("network matched", "network", name)
-			return name, nil
+			slog.Debug("network matched", "network", e.name, "priority", e.def.Priority)
+			return e.name, nil
 		}
 	}
 	slog.Debug("no network matched, using default")

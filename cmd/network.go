@@ -12,12 +12,13 @@ import (
 	outfmt "github.com/thereisnotime/sshroute/internal/output"
 )
 
-// NetworkRow is the display struct for a single network entry.
+// NetworkRow is the display struct for a single network check entry.
 type NetworkRow struct {
-	Name   string `json:"name"   yaml:"name"   table:"NETWORK"`
-	Type   string `json:"type"   yaml:"type"   table:"TYPE"`
-	Rule   string `json:"rule"   yaml:"rule"   table:"RULE"`
-	Active bool   `json:"active" yaml:"active" table:"ACTIVE"`
+	Name     string `json:"name"     yaml:"name"     table:"NETWORK"`
+	Priority int    `json:"priority" yaml:"priority" table:"PRIORITY"`
+	Type     string `json:"type"     yaml:"type"     table:"TYPE"`
+	Rule     string `json:"rule"     yaml:"rule"     table:"RULE"`
+	Active   bool   `json:"active"   yaml:"active"   table:"ACTIVE"`
 }
 
 var networkCmd = &cobra.Command{
@@ -66,7 +67,7 @@ func runNetworkList(cmd *cobra.Command, args []string) error {
 		detected = "unknown"
 	}
 
-	// Sort network names for deterministic output.
+	// Sort network names alphabetically for stable output.
 	names := make([]string, 0, len(cfg.Networks))
 	for name := range cfg.Networks {
 		names = append(names, name)
@@ -75,20 +76,22 @@ func runNetworkList(cmd *cobra.Command, args []string) error {
 
 	var rows []NetworkRow
 	for _, name := range names {
-		checks := cfg.Networks[name]
-		if len(checks) == 0 {
+		def := cfg.Networks[name]
+		if len(def.Checks) == 0 {
 			rows = append(rows, NetworkRow{
-				Name:   name,
-				Active: name == detected,
+				Name:     name,
+				Priority: def.Priority,
+				Active:   name == detected,
 			})
 			continue
 		}
-		for _, check := range checks {
+		for _, check := range def.Checks {
 			rows = append(rows, NetworkRow{
-				Name:   name,
-				Type:   string(check.Type),
-				Rule:   checkRuleString(check),
-				Active: name == detected,
+				Name:     name,
+				Priority: def.Priority,
+				Type:     string(check.Type),
+				Rule:     checkRuleString(check),
+				Active:   name == detected,
 			})
 		}
 	}
@@ -108,23 +111,21 @@ func runNetworkTest(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
-	checks, ok := cfg.Networks[name]
+	def, ok := cfg.Networks[name]
 	if !ok {
 		return fmt.Errorf("network %q not found in config", name)
 	}
 
-	if len(checks) == 0 {
+	if len(def.Checks) == 0 {
 		fmt.Printf("network %q has no checks defined\n", name)
 		return nil
 	}
 
-	// Run each check individually by passing a single-check map to Detect.
-	// Detect returns the network name if all checks in the slice pass, so we
-	// test one check at a time using a synthetic single-entry map.
+	// Test each check individually.
 	allPassed := true
-	for i, check := range checks {
-		singleMap := map[string][]config.NetworkCheck{
-			name: {check},
+	for i, check := range def.Checks {
+		singleMap := map[string]config.NetworkDefinition{
+			name: {Priority: def.Priority, Checks: []config.NetworkCheck{check}},
 		}
 		result, err := internalnetwork.Detect(singleMap)
 		if err != nil {
@@ -154,7 +155,7 @@ func runNetworkTest(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// checkRuleString returns a compact human-readable description of a single check.
+// checkRuleString returns a compact human-readable description of a check.
 func checkRuleString(check config.NetworkCheck) string {
 	switch {
 	case check.Match != "":
