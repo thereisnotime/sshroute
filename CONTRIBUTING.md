@@ -66,12 +66,20 @@ go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out | t
 
 Bug reports and feature requests are welcome via [GitHub Issues](https://github.com/thereisnotime/sshroute/issues). For security vulnerabilities, please follow the process in [SECURITY.md](SECURITY.md).
 
-## Code style
+## Coding standards
 
-- Standard Go formatting (`gofmt` / `goimports`).
+All contributions must follow the official Go coding standards:
+
+- **[Effective Go](https://go.dev/doc/effective_go)** — the primary style reference for Go code.
+- **[Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments)** — common mistakes and idioms reviewed in Go PRs.
+- **[Go Test Comments](https://github.com/golang/go/wiki/TestComments)** — conventions for writing good Go tests.
+
+In addition:
+
+- Format all code with `gofmt` (or `goimports`) before committing.
 - Keep `cmd/` thin — business logic belongs in `internal/`.
 - No magic numbers or unexplained constants — add a comment.
-- Error messages are lowercase and don't end with punctuation.
+- Error messages are lowercase and do not end with punctuation (e.g. `"config not found"`, not `"Config not found."`).
 - No `Co-Authored-By` trailers in commits.
 
 ## License
