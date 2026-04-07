@@ -64,7 +64,7 @@ func runShadowMode() {
 	}
 
 	passthrough := func() {
-		if err := syscall.Exec(ssh.RealSSH, append([]string{ssh.RealSSH}, os.Args[1:]...), os.Environ()); err != nil {
+		if err := syscall.Exec(ssh.RealSSH, append([]string{ssh.RealSSH}, os.Args[1:]...), os.Environ()); err != nil { //nolint:gosec // G204: RealSSH is a compile-time constant (/usr/bin/ssh); passthrough is the intended behaviour
 			fmt.Fprintf(os.Stderr, "sshroute: passthrough exec failed: %v\n", err)
 			os.Exit(1)
 		}

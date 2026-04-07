@@ -12,8 +12,12 @@ import (
 // operstate file reports "up". A missing interface is not an error — it simply
 // returns false.
 func checkInterface(name string) (bool, error) {
+	// Reject names that would escape the /sys/class/net/ directory.
+	if strings.ContainsAny(name, "/\\") || name == ".." || name == "." {
+		return false, fmt.Errorf("invalid interface name: %q", name)
+	}
 	path := "/sys/class/net/" + name + "/operstate"
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: path is constructed from a validated interface name under a fixed sysfs prefix
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return false, nil

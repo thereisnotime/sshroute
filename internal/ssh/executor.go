@@ -71,7 +71,7 @@ func BuildArgv(params config.SSHParams, parsed ParsedArgs) []string {
 // Exec replaces the current process with ssh using the given argv.
 // On success this function never returns; the current process is replaced entirely.
 func Exec(argv []string) error {
-	if err := syscall.Exec(RealSSH, argv, os.Environ()); err != nil {
+	if err := syscall.Exec(RealSSH, argv, os.Environ()); err != nil { //nolint:gosec // G204: RealSSH is a compile-time constant (/usr/bin/ssh)
 		return fmt.Errorf("exec %s: %w", RealSSH, err)
 	}
 	// Unreachable — syscall.Exec replaces the process image.

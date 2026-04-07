@@ -56,7 +56,9 @@ func runConfigEdit(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("creating config file %q: %w", path, err)
 		}
-		f.Close()
+		if err := f.Close(); err != nil {
+			return fmt.Errorf("closing config file %q: %w", path, err)
+		}
 	}
 
 	editor := os.Getenv("EDITOR")
@@ -69,7 +71,7 @@ func runConfigEdit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("editor %q not found in PATH: %w", editor, err)
 	}
 
-	if err := syscall.Exec(editorPath, []string{editorPath, path}, os.Environ()); err != nil {
+	if err := syscall.Exec(editorPath, []string{editorPath, path}, os.Environ()); err != nil { //nolint:gosec // G204: editor is resolved via LookPath from user $EDITOR — standard pattern used by git, etc.
 		return fmt.Errorf("exec %s: %w", editorPath, err)
 	}
 	// Unreachable — syscall.Exec replaces the process.
