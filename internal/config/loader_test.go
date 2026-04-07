@@ -321,6 +321,30 @@ hosts:
 	}
 }
 
+func TestLoad_NilHostsInitialized(t *testing.T) {
+	// YAML with only a networks section (no hosts key) results in cfg.Hosts
+	// being nil after unmarshal, exercising the nil-initialization branch.
+	content := `
+networks:
+  vpn:
+    priority: 10
+    checks:
+      - type: interface
+        match: wg0
+`
+	f := writeTempConfig(t, content)
+	cfg, err := Load(f)
+	if err != nil {
+		t.Fatalf("Load error: %v", err)
+	}
+	if cfg.Hosts == nil {
+		t.Error("expected Hosts to be initialized to non-nil map")
+	}
+	if len(cfg.Networks) != 1 {
+		t.Errorf("expected 1 network, got %d", len(cfg.Networks))
+	}
+}
+
 func TestLoad_ReadError(t *testing.T) {
 	// Create a directory at the expected config path — os.ReadFile returns EISDIR
 	// (not ErrNotExist), which exercises the non-NotExist error branch.
