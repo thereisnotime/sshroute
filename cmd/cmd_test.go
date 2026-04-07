@@ -728,6 +728,22 @@ func TestRunInit_EmptyCfgFile(t *testing.T) {
 	}
 }
 
+func TestVersionCmd(t *testing.T) {
+	// Run the version command; it just prints to stdout and must not error.
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	versionCmd.Run(versionCmd, nil)
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	if buf.Len() == 0 {
+		t.Error("expected version output, got nothing")
+	}
+}
+
 // LoadConfig error tests — cover the "loading config" error branch in each command.
 
 func TestRunConnect_LoadConfigError(t *testing.T) {
