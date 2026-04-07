@@ -15,7 +15,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version-file: go.mod   # reads version from go.mod directly
 
       - name: Verify go.sum is tidy
         run: go mod tidy && git diff --exit-code go.sum
@@ -45,12 +45,14 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version-file: go.mod
+
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
 
       - name: Run gosec
-        uses: securego/gosec@master
-        with:
-          args: -fmt sarif -out gosec.sarif ./...
+        run: gosec -fmt sarif -out gosec.sarif ./...
+        continue-on-error: true   # upload SARIF even if issues found
 
       - name: Upload SARIF to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
@@ -67,13 +69,13 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version-file: go.mod
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
 
       - name: Run govulncheck
-        uses: golang/govulncheck-action@v1
-        with:
-          go-version-input: "1.22"
-          go-package: ./...
+        run: govulncheck ./...
 
       - name: Run Trivy (filesystem scan)
         uses: aquasecurity/trivy-action@master
