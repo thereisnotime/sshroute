@@ -17,4 +17,13 @@ type Formatter interface {
 
 // New returns a Formatter for the given format string.
 // Defaults to table if format is unrecognised.
-func New(format string) Formatter { return nil } // implemented by A5
+func New(format string) Formatter {
+	switch format {
+	case FormatJSON:
+		return &jsonFormatter{}
+	case FormatYAML:
+		return &yamlFormatter{}
+	default:
+		return &tableFormatter{}
+	}
+}

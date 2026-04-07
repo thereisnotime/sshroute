@@ -1,6 +1,11 @@
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+	"github.com/thereisnotime/sshroute/internal/config"
+)
 
 var removeCmd = &cobra.Command{
 	Use:     "remove <alias>",
@@ -11,7 +16,25 @@ var removeCmd = &cobra.Command{
 }
 
 func runRemove(cmd *cobra.Command, args []string) error {
-	return nil // implemented by A4
+	alias := args[0]
+
+	cfg, err := loadConfig()
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
+
+	if _, ok := cfg.Hosts[alias]; !ok {
+		return fmt.Errorf("host %q not found in config", alias)
+	}
+
+	delete(cfg.Hosts, alias)
+
+	if err := config.Save(cfgFile, cfg); err != nil {
+		return fmt.Errorf("saving config: %w", err)
+	}
+
+	fmt.Printf("Removed host %q\n", alias)
+	return nil
 }
 
 func init() {

@@ -1,6 +1,11 @@
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+	"github.com/thereisnotime/sshroute/internal/config"
+)
 
 var (
 	addHost    string
@@ -19,7 +24,45 @@ var addCmd = &cobra.Command{
 }
 
 func runAdd(cmd *cobra.Command, args []string) error {
-	return nil // implemented by A4
+	alias := args[0]
+
+	cfg, err := loadConfig()
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
+
+	params := config.SSHParams{
+		Host: addHost,
+		Port: addPort,
+		User: addUser,
+		Key:  addKey,
+		Jump: addJump,
+	}
+
+	if cfg.Hosts == nil {
+		cfg.Hosts = make(map[string]config.HostConfig)
+	}
+
+	if cfg.Hosts[alias] == nil {
+		cfg.Hosts[alias] = make(config.HostConfig)
+	}
+	cfg.Hosts[alias][addNetwork] = params
+
+	// When adding a non-default network profile, ensure a "default" profile
+	// exists so the config remains valid. If the host is brand new, seed the
+	// default from the same params.
+	if addNetwork != "default" {
+		if _, hasDefault := cfg.Hosts[alias]["default"]; !hasDefault {
+			cfg.Hosts[alias]["default"] = params
+		}
+	}
+
+	if err := config.Save(cfgFile, cfg); err != nil {
+		return fmt.Errorf("saving config: %w", err)
+	}
+
+	fmt.Printf("Added/updated host %q for network %q\n", alias, addNetwork)
+	return nil
 }
 
 func init() {
