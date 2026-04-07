@@ -214,6 +214,23 @@ func TestYAMLFormatter_WriteError(t *testing.T) {
 	}
 }
 
+// errMarshalYAML implements yaml.Marshaler and always returns an error,
+// allowing us to trigger the yaml.Marshal error branch in yamlFormatter.
+type errMarshalYAML struct{}
+
+func (e errMarshalYAML) MarshalYAML() (any, error) {
+	return nil, fmt.Errorf("intentional yaml marshal error")
+}
+
+// TestYAMLFormatter_MarshalError covers the yaml.Marshal error branch.
+func TestYAMLFormatter_MarshalError(t *testing.T) {
+	var buf bytes.Buffer
+	err := New(FormatYAML).Format(&buf, errMarshalYAML{})
+	if err == nil {
+		t.Fatal("expected error from failing yaml.Marshal")
+	}
+}
+
 // testRowNoTag has no table struct tags, exercising the tag=="" → field-name branch.
 type testRowNoTag struct {
 	Name  string
