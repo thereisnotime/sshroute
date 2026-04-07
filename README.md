@@ -215,6 +215,10 @@ sshroute list -o yaml          # YAML
 sshroute network list -o json
 ```
 
+## Contributing
+
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to set up the project, run tests, and open a pull request.
+
 ## Building from source
 
 Requires [Go 1.22+](https://go.dev/dl/) and [just](https://just.systems/).
