@@ -592,6 +592,42 @@ func TestRunConfigEdit_EmptyCfgFile(t *testing.T) {
 	}
 }
 
+func TestRunInit_MkdirAllError(t *testing.T) {
+	// /dev/null is a char device; MkdirAll trying to create a subdir inside it
+	// fails with ENOTDIR, covering the "creating config directory" error branch.
+	cfgFile = "/dev/null/subdir/config.yaml"
+	t.Setenv("SSHROUTE_CONFIG", "/dev/null/subdir/config.yaml")
+
+	err := runInit(initCmd, nil)
+	if err == nil {
+		t.Fatal("expected error creating config directory")
+	}
+	// Restore valid cfgFile for subsequent tests.
+	t.Cleanup(func() { cfgFile = "" })
+}
+
+func TestRunInit_WriteFileError(t *testing.T) {
+	// A directory at the config path makes os.WriteFile fail with EISDIR,
+	// covering the "writing config file" error branch.
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	if err := os.Mkdir(path, 0o755); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	cfgFile = path
+	t.Setenv("SSHROUTE_CONFIG", path)
+	initForce = true
+	defer func() { initForce = false }()
+
+	err := runInit(initCmd, nil)
+	if err == nil {
+		t.Fatal("expected error writing config file")
+	}
+	if !strings.Contains(err.Error(), "writing config file") {
+		t.Errorf("error = %q, want 'writing config file'", err.Error())
+	}
+}
+
 func TestRunNetworkList_DetectError(t *testing.T) {
 	// A ping check with invalid timeout causes Detect to error; runNetworkList
 	// must fall back to "unknown" rather than propagating the error.
