@@ -52,6 +52,16 @@ func TestCheckPing_UsesIcmpOrFallback(t *testing.T) {
 	}
 }
 
+func TestFallbackPing_BinaryNotFound(t *testing.T) {
+	// Empty PATH makes ping binary lookup fail with exec.ErrNotFound,
+	// which is not an *exec.ExitError — covers the hard-error return branch.
+	t.Setenv("PATH", "")
+	_, err := fallbackPing("127.0.0.1", 1*time.Second)
+	if err == nil {
+		t.Error("expected error when ping binary not found in PATH")
+	}
+}
+
 func TestIsPermissionError(t *testing.T) {
 	if !isPermissionError(os.ErrPermission) {
 		t.Error("os.ErrPermission should be detected")
