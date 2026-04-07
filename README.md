@@ -90,21 +90,9 @@ sshroute network
 
 ## Commands
 
-| Command | Description |
-|---|---|
-| `init` | Create a starter config file with commented examples |
-| `connect <alias>` | Connect to a host — resolves params for the active network |
-| `list` | List all configured hosts and their active profile |
-| `add <alias>` | Add or update a host (use `--network` for per-network overrides) |
-| `remove <alias>` | Remove a host from the config |
-| `network` | Show the currently detected network name |
-| `network list` | List all configured networks and their check rules |
-| `network test <name>` | Run checks for a specific network and show pass/fail per rule |
-| `config` | Print the config file path |
-| `config edit` | Open the config in `$EDITOR` |
-| `version` | Print version, commit, and build info |
+### Global flags
 
-## Global flags
+These flags apply to every command:
 
 | Flag | Env var | Default | Description |
 |---|---|---|---|
@@ -112,6 +100,63 @@ sshroute network
 | `-o, --output` | | `table` | Output format: `table`, `json`, `yaml` |
 | `-v, --verbose` | `SSHROUTE_VERBOSE=1` | `false` | Debug logging to stderr |
 | `--dry-run` | | `false` | Print resolved SSH command without executing |
+
+### `init`
+
+Create a starter config file with commented examples. Fails if the file already exists.
+
+| Flag | Default | Description |
+|---|---|---|
+| `--force` | `false` | Overwrite an existing config file |
+
+### `connect <alias>`
+
+Detect the active network, resolve SSH parameters for `alias`, and exec the real SSH binary. Any extra arguments after the alias are passed through to SSH unchanged.
+
+### `list`
+
+List all configured hosts and the SSH parameters that would be used on the current network. Supports `-o table|json|yaml`.
+
+### `add <alias>`
+
+Add a host or update an existing one. Omitted flags keep their current value. Run multiple times with different `--network` values to build per-network overrides.
+
+| Flag | Default | Description |
+|---|---|---|
+| `--host` | | Hostname or IP address |
+| `--port` | `22` | SSH port |
+| `--user` | | SSH username |
+| `--key` | | Path to identity file (supports `~`) |
+| `--jump` | | Jump host — passed as `-J` to SSH |
+| `--network` | `default` | Network profile to write the params into |
+
+### `remove <alias>`
+
+Remove all profiles for `alias` from the config.
+
+### `network`
+
+Print the name of the currently detected network (or `default` if none match).
+
+### `network list`
+
+List all configured networks with their priority, check rules, and current active state. Supports `-o table|json|yaml`.
+
+### `network test <name>`
+
+Run every check for network `name` and print pass/fail per rule. Useful for debugging detection logic.
+
+### `config`
+
+Print the resolved path to the config file.
+
+### `config edit`
+
+Open the config file in `$EDITOR` (falls back to `nano`). Creates the file and its parent directory if they do not exist.
+
+### `version`
+
+Print the version, git commit, build date, and Go runtime info.
 
 ## Config file
 
