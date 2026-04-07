@@ -228,6 +228,37 @@ func TestCheckExec_Timeout(t *testing.T) {
 	}
 }
 
+func TestDetect_CheckError(t *testing.T) {
+	// A ping check with an invalid timeout causes runCheck → runChecks → Detect
+	// to propagate an error, covering those error-return branches.
+	networks := map[string]config.NetworkDefinition{
+		"broken": {
+			Priority: 10,
+			Checks:   []config.NetworkCheck{{Type: config.CheckTypePing, Host: "127.0.0.1", Timeout: "not_a_duration"}},
+		},
+	}
+	_, err := Detect(networks)
+	if err == nil {
+		t.Error("expected error for invalid timeout")
+	}
+}
+
+func TestRunCheck_RouteType(t *testing.T) {
+	// Exercises the CheckTypeRoute case in runCheck's switch statement.
+	_, err := runCheck(config.NetworkCheck{Type: config.CheckTypeRoute, Match: "nonexistent-route-xyz-99"})
+	if err != nil {
+		t.Fatalf("unexpected error for missing route: %v", err)
+	}
+}
+
+func TestRunCheck_InterfaceType(t *testing.T) {
+	// Exercises the CheckTypeInterface case in runCheck's switch statement.
+	_, err := runCheck(config.NetworkCheck{Type: config.CheckTypeInterface, Match: "doesnotexist99"})
+	if err != nil {
+		t.Fatalf("unexpected error for missing interface: %v", err)
+	}
+}
+
 func TestCheckInterface_Loopback(t *testing.T) {
 	// The loopback interface "lo" is always present on Linux; reading its
 	// operstate exercises the successful ReadFile path (not ErrNotExist).
