@@ -1,6 +1,8 @@
 package network
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/thereisnotime/sshroute/internal/config"
@@ -195,6 +197,32 @@ func TestRunCheck_UnknownType(t *testing.T) {
 	_, err := runCheck(config.NetworkCheck{Type: "magic"})
 	if err == nil {
 		t.Error("expected error for unknown check type")
+	}
+}
+
+func TestCheckRoute_IPError(t *testing.T) {
+	// Prepend a fake "ip" script that always exits non-zero to the PATH,
+	// forcing checkRoute to return a hard error.
+	dir := t.TempDir()
+	script := filepath.Join(dir, "ip")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nexit 2\n"), 0o755); err != nil {
+		t.Fatalf("setup fake ip script: %v", err)
+	}
+	t.Setenv("PATH", dir+":"+os.Getenv("PATH"))
+
+	_, err := checkRoute("anything")
+	if err == nil {
+		t.Error("expected error when ip exits non-zero")
+	}
+}
+
+func TestCheckExec_ShNotFound(t *testing.T) {
+	// An empty PATH causes sh lookup to fail in exec.LookPath, producing a
+	// non-ExitError, non-timeout error — the hard-error branch in checkExec.
+	t.Setenv("PATH", "")
+	_, err := checkExec("true")
+	if err == nil {
+		t.Error("expected error when sh is not found in PATH")
 	}
 }
 
