@@ -6,6 +6,37 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ---
 
+## [0.1.1] - 2026-04-07
+
+### Changed
+
+- Expanded CLI reference documentation — every command and flag is now fully documented in the README.
+- Added Community section to README covering how to obtain, report issues, and contribute.
+- Added CONTRIBUTING.md with coding standards, project layout, and test instructions.
+- Added SECURITY.md with private vulnerability reporting via GitHub Security Advisories.
+- Added GitHub issue templates for bug reports and feature requests.
+- Added CHANGELOG.md following Keep a Changelog format.
+- OpenSSF Best Practices badge added to README.
+
+### Fixed
+
+- Restored canonical Apache 2.0 LICENSE text so pkg.go.dev detects the license correctly.
+- Fixed gosec suppression annotations (`// #nosec G204/G304`) — previous `//nolint:gosec` comments only worked with golangci-lint, not gosec directly.
+- Handled unhandled `f.Close()` error in `cmd/config.go`.
+- Added interface name validation in `internal/network/iface.go` to prevent path traversal.
+- Pinned `sigstore/cosign-installer`, `aquasecurity/trivy-action`, `github/codeql-action`, and all other GitHub Actions to SHA digests.
+- Pinned `go install` tool versions (`gosec@v2.25.0`, `govulncheck@v1.1.4`).
+- Pinned Dockerfile `FROM` images to digest SHAs.
+- Updated `trivy-action` to v0.35.0 — v0.30.0 internally referenced a deleted `setup-trivy@v0.2.2` action, breaking CI.
+
+### Added
+
+- Unit tests across all internal packages — coverage improved from 0% to ~60%.
+- Fuzz test for SSH argument parser (`FuzzParseArgs`).
+- Branch protection now requires one approving review before merge.
+
+---
+
 ## [0.1.0] - 2026-04-07
 
 Initial public release.
