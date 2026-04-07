@@ -228,6 +228,17 @@ func TestCheckExec_Timeout(t *testing.T) {
 	}
 }
 
+func TestCheckInterface_Loopback(t *testing.T) {
+	// The loopback interface "lo" is always present on Linux; reading its
+	// operstate exercises the successful ReadFile path (not ErrNotExist).
+	ok, err := checkInterface("lo")
+	if err != nil {
+		t.Fatalf("unexpected error for loopback interface: %v", err)
+	}
+	// ok may be true ("up") or false ("unknown") depending on environment.
+	_ = ok
+}
+
 func TestCheckInterface_InvalidName(t *testing.T) {
 	t.Run("path traversal rejected", func(t *testing.T) {
 		_, err := checkInterface("../../etc/passwd")

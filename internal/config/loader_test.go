@@ -247,6 +247,42 @@ func TestSave_MarshalError(t *testing.T) {
 	}
 }
 
+func TestSave_MkdirAllError(t *testing.T) {
+	// /dev/null is a character device, not a directory. Using it as the
+	// parent forces os.MkdirAll to fail with ENOTDIR.
+	path := "/dev/null/subdir/config.yaml"
+	cfg := &Config{
+		Networks: make(map[string]NetworkDefinition),
+		Hosts:    map[string]HostConfig{"h": {"default": {Host: "x"}}},
+	}
+	err := Save(path, cfg)
+	if err == nil {
+		t.Fatal("expected error when parent directory cannot be created")
+	}
+}
+
+func TestSave_CreateTempError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root can write anywhere; cannot test CreateTemp failure")
+	}
+	dir := t.TempDir()
+	roDir := filepath.Join(dir, "readonly")
+	if err := os.Mkdir(roDir, 0o555); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	t.Cleanup(func() { os.Chmod(roDir, 0o755) })
+
+	path := filepath.Join(roDir, "config.yaml")
+	cfg := &Config{
+		Networks: make(map[string]NetworkDefinition),
+		Hosts:    map[string]HostConfig{"h": {"default": {Host: "x"}}},
+	}
+	err := Save(path, cfg)
+	if err == nil {
+		t.Fatal("expected error writing to read-only directory")
+	}
+}
+
 func TestDefaultConfigPath_NoEnv(t *testing.T) {
 	t.Setenv("SSHROUTE_CONFIG", "")
 	t.Setenv("XDG_CONFIG_HOME", "")
@@ -282,6 +318,21 @@ hosts:
 	}
 	if cfg.Hosts["s"]["default"].Host != "1.2.3.4" {
 		t.Errorf("host mismatch")
+	}
+}
+
+func TestLoad_ReadError(t *testing.T) {
+	// Create a directory at the expected config path — os.ReadFile returns EISDIR
+	// (not ErrNotExist), which exercises the non-NotExist error branch.
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	if err := os.Mkdir(path, 0o755); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected error reading a directory as config file")
 	}
 }
 

@@ -23,6 +23,17 @@ func withTempConfig(t *testing.T, cfg *config.Config) string {
 	return path
 }
 
+func withInvalidConfig(t *testing.T) {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(path, []byte("{{invalid yaml{{"), 0o600); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	t.Setenv("SSHROUTE_CONFIG", path)
+	cfgFile = path
+}
+
 func TestCheckRuleString(t *testing.T) {
 	tests := []struct {
 		check config.NetworkCheck
@@ -424,5 +435,288 @@ func TestRunNetworkTest_WithChecks(t *testing.T) {
 
 	if err := runNetworkTest(networkTestCmd, []string{"local"}); err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunNetworkTest_FailingCheck(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: map[string]config.NetworkDefinition{
+			"nope": {
+				Priority: 10,
+				Checks: []config.NetworkCheck{
+					{Type: config.CheckTypeExec, Command: "false"},
+				},
+			},
+		},
+		Hosts: make(map[string]config.HostConfig),
+	})
+
+	// A failing check must still complete without error — it just prints FAIL/NOT ACTIVE.
+	if err := runNetworkTest(networkTestCmd, []string{"nope"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunNetworkTest_ErrorCheck(t *testing.T) {
+	// A ping check with an invalid timeout passes config validation (host is
+	// non-empty) but Detect returns an error at runtime — covering the
+	// "ERROR:" stderr branch in runNetworkTest.
+	withTempConfig(t, &config.Config{
+		Networks: map[string]config.NetworkDefinition{
+			"bad": {
+				Priority: 10,
+				Checks: []config.NetworkCheck{
+					{Type: config.CheckTypePing, Host: "127.0.0.1", Timeout: "not_a_duration"},
+				},
+			},
+		},
+		Hosts: make(map[string]config.HostConfig),
+	})
+
+	if err := runNetworkTest(networkTestCmd, []string{"bad"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunNetworkList_NoChecksNetwork(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: map[string]config.NetworkDefinition{
+			"bare": {Priority: 5},
+		},
+		Hosts: make(map[string]config.HostConfig),
+	})
+
+	if err := runNetworkList(networkListCmd, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunNetworkList_JSONOutput(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: map[string]config.NetworkDefinition{
+			"vpn": {Priority: 10, Checks: []config.NetworkCheck{{Type: config.CheckTypeExec, Command: "true"}}},
+		},
+		Hosts: make(map[string]config.HostConfig),
+	})
+	old := output
+	output = "json"
+	defer func() { output = old }()
+
+	if err := runNetworkList(networkListCmd, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunList_JSONOutput(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"srv": {"default": {Host: "1.2.3.4", Port: 22, User: "alice"}},
+		},
+	})
+	old := output
+	output = "json"
+	defer func() { output = old }()
+
+	if err := runList(listCmd, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunList_YAMLOutput(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"srv": {"default": {Host: "1.2.3.4", Port: 22, User: "alice"}},
+		},
+	})
+	old := output
+	output = "yaml"
+	defer func() { output = old }()
+
+	if err := runList(listCmd, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunList_DetectError(t *testing.T) {
+	// A ping check with an invalid timeout passes validation but causes Detect
+	// to error at runtime; runList must still succeed, falling back to "unknown".
+	withTempConfig(t, &config.Config{
+		Networks: map[string]config.NetworkDefinition{
+			"broken": {Priority: 1, Checks: []config.NetworkCheck{
+				{Type: config.CheckTypePing, Host: "127.0.0.1", Timeout: "not_a_duration"},
+			}},
+		},
+		Hosts: map[string]config.HostConfig{
+			"srv": {"default": {Host: "1.2.3.4", Port: 22, User: "alice"}},
+		},
+	})
+
+	if err := runList(listCmd, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunConnect_DetectError(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: map[string]config.NetworkDefinition{
+			"broken": {Priority: 1, Checks: []config.NetworkCheck{
+				{Type: config.CheckTypePing, Host: "127.0.0.1", Timeout: "not_a_duration"},
+			}},
+		},
+		Hosts: map[string]config.HostConfig{
+			"srv": {"default": {Host: "1.2.3.4", Port: 22, User: "alice"}},
+		},
+	})
+
+	err := runConnect(connectCmd, []string{"srv"})
+	if err == nil {
+		t.Error("expected error from network detection failure")
+	}
+}
+
+func TestRunConfigEdit_EmptyCfgFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	t.Setenv("SSHROUTE_CONFIG", path)
+	t.Setenv("EDITOR", "nonexistent_editor_xyz_abc")
+	cfgFile = "" // force DefaultConfigPath() branch
+
+	err := runConfigEdit(configEditCmd, nil)
+	if err == nil {
+		t.Fatal("expected error when editor binary does not exist")
+	}
+	if !strings.Contains(err.Error(), "not found in PATH") {
+		t.Errorf("error = %q, want 'not found in PATH'", err.Error())
+	}
+}
+
+func TestRunNetworkList_DetectError(t *testing.T) {
+	// A ping check with invalid timeout causes Detect to error; runNetworkList
+	// must fall back to "unknown" rather than propagating the error.
+	withTempConfig(t, &config.Config{
+		Networks: map[string]config.NetworkDefinition{
+			"broken": {Priority: 1, Checks: []config.NetworkCheck{
+				{Type: config.CheckTypePing, Host: "127.0.0.1", Timeout: "bad_timeout"},
+			}},
+		},
+		Hosts: make(map[string]config.HostConfig),
+	})
+
+	if err := runNetworkList(networkListCmd, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunNetwork_DetectError(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: map[string]config.NetworkDefinition{
+			"broken": {Priority: 1, Checks: []config.NetworkCheck{
+				{Type: config.CheckTypePing, Host: "127.0.0.1", Timeout: "bad_timeout"},
+			}},
+		},
+		Hosts: make(map[string]config.HostConfig),
+	})
+
+	err := runNetwork(networkCmd, nil)
+	if err == nil {
+		t.Error("expected error from network detection failure")
+	}
+}
+
+func TestRunNetworkList_YAMLOutput(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: map[string]config.NetworkDefinition{
+			"vpn": {Priority: 10, Checks: []config.NetworkCheck{{Type: config.CheckTypeExec, Command: "true"}}},
+		},
+		Hosts: make(map[string]config.HostConfig),
+	})
+	old := output
+	output = "yaml"
+	defer func() { output = old }()
+
+	if err := runNetworkList(networkListCmd, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunInit_EmptyCfgFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	t.Setenv("SSHROUTE_CONFIG", path)
+	cfgFile = "" // force DefaultConfigPath() branch
+
+	if err := runInit(initCmd, nil); err != nil {
+		t.Fatalf("runInit error: %v", err)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("config file not created: %v", err)
+	}
+}
+
+// LoadConfig error tests — cover the "loading config" error branch in each command.
+
+func TestRunConnect_LoadConfigError(t *testing.T) {
+	withInvalidConfig(t)
+	err := runConnect(connectCmd, []string{"anyhost"})
+	if err == nil || !strings.Contains(err.Error(), "loading config") {
+		t.Errorf("expected 'loading config' error, got %v", err)
+	}
+}
+
+func TestRunList_LoadConfigError(t *testing.T) {
+	withInvalidConfig(t)
+	err := runList(listCmd, nil)
+	if err == nil || !strings.Contains(err.Error(), "loading config") {
+		t.Errorf("expected 'loading config' error, got %v", err)
+	}
+}
+
+func TestRunNetworkList_LoadConfigError(t *testing.T) {
+	withInvalidConfig(t)
+	err := runNetworkList(networkListCmd, nil)
+	if err == nil || !strings.Contains(err.Error(), "loading config") {
+		t.Errorf("expected 'loading config' error, got %v", err)
+	}
+}
+
+func TestRunNetwork_LoadConfigError(t *testing.T) {
+	withInvalidConfig(t)
+	err := runNetwork(networkCmd, nil)
+	if err == nil || !strings.Contains(err.Error(), "loading config") {
+		t.Errorf("expected 'loading config' error, got %v", err)
+	}
+}
+
+func TestRunNetworkTest_LoadConfigError(t *testing.T) {
+	withInvalidConfig(t)
+	err := runNetworkTest(networkTestCmd, []string{"anynet"})
+	if err == nil || !strings.Contains(err.Error(), "loading config") {
+		t.Errorf("expected 'loading config' error, got %v", err)
+	}
+}
+
+func TestRunAdd_LoadConfigError(t *testing.T) {
+	withInvalidConfig(t)
+	addHost = "1.2.3.4"
+	addPort = 22
+	addUser = "alice"
+	addKey = ""
+	addJump = ""
+	addNetwork = "default"
+	defer func() { addHost = ""; addPort = 22; addUser = ""; addNetwork = "default" }()
+
+	err := runAdd(addCmd, []string{"newserver"})
+	if err == nil || !strings.Contains(err.Error(), "loading config") {
+		t.Errorf("expected 'loading config' error, got %v", err)
+	}
+}
+
+func TestRunRemove_LoadConfigError(t *testing.T) {
+	withInvalidConfig(t)
+	err := runRemove(removeCmd, []string{"anyhost"})
+	if err == nil || !strings.Contains(err.Error(), "loading config") {
+		t.Errorf("expected 'loading config' error, got %v", err)
 	}
 }

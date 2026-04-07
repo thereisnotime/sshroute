@@ -83,6 +83,33 @@ func TestResolve(t *testing.T) {
 			t.Error("expected error for missing default profile, got nil")
 		}
 	})
+
+	t.Run("vpn override with user", func(t *testing.T) {
+		// Exercises the merged.User = override.User assignment branch.
+		cfg2 := makeConfig(map[string]config.HostConfig{
+			"srv": {
+				"default": {Host: "1.2.3.4", User: "alice"},
+				"vpn":     {Host: "10.0.0.1", User: "root"},
+			},
+		})
+		params, err := Resolve(cfg2, "srv", "vpn")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if params.User != "root" {
+			t.Errorf("User = %q, want %q", params.User, "root")
+		}
+	})
+
+	t.Run("empty network string falls back to default", func(t *testing.T) {
+		params, err := Resolve(cfg, "webserver", "")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if params.Host != "1.2.3.4" {
+			t.Errorf("Host = %q, want %q", params.Host, "1.2.3.4")
+		}
+	})
 }
 
 func TestBuildArgv(t *testing.T) {

@@ -3,9 +3,17 @@ package output
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 )
+
+// errWriter is an io.Writer that always returns an error.
+type errWriter struct{}
+
+func (e *errWriter) Write(p []byte) (int, error) {
+	return 0, fmt.Errorf("forced write error")
+}
 
 type testRow struct {
 	Name  string `json:"name"  yaml:"name"  table:"NAME"`
@@ -176,5 +184,32 @@ func TestTableFormatter_SliceOfNonStruct(t *testing.T) {
 	// The fallback path just prints the whole slice via fmt.Fprintf; output should be non-empty.
 	if buf.Len() == 0 {
 		t.Error("expected non-empty output for slice of non-struct")
+	}
+}
+
+// TestJSONFormatter_MarshalError covers the json.MarshalIndent error branch.
+func TestJSONFormatter_MarshalError(t *testing.T) {
+	// Channels cannot be marshaled to JSON — this triggers the error branch.
+	ch := make(chan int)
+	var buf bytes.Buffer
+	err := New(FormatJSON).Format(&buf, ch)
+	if err == nil {
+		t.Fatal("expected error marshaling channel to JSON")
+	}
+}
+
+// TestJSONFormatter_WriteError covers the fmt.Fprintf write-error branch.
+func TestJSONFormatter_WriteError(t *testing.T) {
+	err := New(FormatJSON).Format(&errWriter{}, []testRow{{"x", 1}})
+	if err == nil {
+		t.Fatal("expected error from failing writer")
+	}
+}
+
+// TestYAMLFormatter_WriteError covers the fmt.Fprint write-error branch.
+func TestYAMLFormatter_WriteError(t *testing.T) {
+	err := New(FormatYAML).Format(&errWriter{}, []testRow{{"x", 1}})
+	if err == nil {
+		t.Fatal("expected error from failing writer")
 	}
 }
