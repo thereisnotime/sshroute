@@ -20,6 +20,22 @@ archives:
         format: zip
 checksum:
   name_template: "checksums.txt"
+
+signs:
+  - cmd: cosign
+    args:
+      - sign-blob
+      - --output-signature=${signature}
+      - --output-certificate=${certificate}
+      - ${artifact}
+      - --yes
+    signature: ${artifact}.sig
+    certificate: ${artifact}.pem
+    artifacts: checksum
+
+sboms:
+  - artifacts: archive
+
 changelog:
   sort: asc
   filters:

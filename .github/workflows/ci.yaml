@@ -6,16 +6,19 @@ on:
   pull_request:
     branches: [main]
 
+permissions: read-all
+
 jobs:
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff  # v5
         with:
-          go-version-file: go.mod   # reads version from go.mod directly
+          go-version-file: go.mod
 
       - name: Verify go.sum is tidy
         run: go mod tidy && git diff --exit-code go.sum
@@ -30,7 +33,7 @@ jobs:
         run: go test -race -shuffle=on -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238  # v4
         with:
           files: coverage.out
           fail_ci_if_error: false
@@ -39,11 +42,11 @@ jobs:
     name: SAST (gosec)
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff  # v5
         with:
           go-version-file: go.mod
 
@@ -52,10 +55,10 @@ jobs:
 
       - name: Run gosec
         run: gosec -fmt sarif -out gosec.sarif ./...
-        continue-on-error: true   # upload SARIF even if issues found
+        continue-on-error: true
 
       - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@5c8a8a642e79153f5d047b10ec1cba1d1cc65699  # v3
         with:
           sarif_file: gosec.sarif
 
@@ -63,11 +66,11 @@ jobs:
     name: SCA (govulncheck + trivy)
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff  # v5
         with:
           go-version-file: go.mod
 
@@ -78,7 +81,7 @@ jobs:
         run: govulncheck ./...
 
       - name: Run Trivy (filesystem scan)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5  # v0.30.0
         with:
           scan-type: fs
           scan-ref: .
@@ -87,6 +90,6 @@ jobs:
           severity: CRITICAL,HIGH
 
       - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@5c8a8a642e79153f5d047b10ec1cba1d1cc65699  # v3
         with:
           sarif_file: trivy.sarif
