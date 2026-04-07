@@ -37,6 +37,12 @@ sboms:
   - artifacts: archive
 
 changelog:
+  use: github
+  format: "{{.SHA}}: {{.Message}} (@{{.AuthorUsername}})"
   sort: asc
   filters:
     exclude: ['^docs:', '^test:', '^ci:']
+
+release:
+  footer: |
+    **Full changelog**: See [CHANGELOG.md](https://github.com/thereisnotime/sshroute/blob/main/CHANGELOG.md)
