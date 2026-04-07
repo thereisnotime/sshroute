@@ -72,6 +72,28 @@ func TestExpandTildeExecutor(t *testing.T) {
 	}
 }
 
+func TestExpandTildeExecutor_TildeOnly(t *testing.T) {
+	u, err := user.Current()
+	if err != nil {
+		t.Skip("cannot get current user")
+	}
+	got := expandTilde("~")
+	if got != u.HomeDir {
+		t.Errorf("expandTilde(~) = %q, want %q", got, u.HomeDir)
+	}
+}
+
+func TestExpandTildeExecutor_NoTilde(t *testing.T) {
+	got := expandTilde("/etc/hosts")
+	if got != "/etc/hosts" {
+		t.Errorf("expandTilde(/etc/hosts) = %q, want unchanged", got)
+	}
+	got = expandTilde("")
+	if got != "" {
+		t.Errorf("expandTilde('') = %q, want empty", got)
+	}
+}
+
 func TestBuildArgv_PortFormatting(t *testing.T) {
 	// Ensure port is formatted as decimal string, not e.g. hex.
 	from := config.SSHParams{Host: "h", Port: 65535}

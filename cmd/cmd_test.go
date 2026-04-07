@@ -199,3 +199,169 @@ func TestRunRemove_MissingHost(t *testing.T) {
 		t.Error("expected error when removing non-existent host")
 	}
 }
+
+func TestRunAdd_DefaultNetwork(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts:    make(map[string]config.HostConfig),
+	})
+
+	addHost = "1.2.3.4"
+	addPort = 22
+	addUser = "alice"
+	addKey = ""
+	addJump = ""
+	addNetwork = "default"
+	defer func() { addHost = ""; addPort = 22; addUser = ""; addNetwork = "default" }()
+
+	if err := runAdd(addCmd, []string{"newserver"}); err != nil {
+		t.Fatalf("runAdd error: %v", err)
+	}
+
+	cfg, err := config.Load(cfgFile)
+	if err != nil {
+		t.Fatalf("reload error: %v", err)
+	}
+	if cfg.Hosts["newserver"]["default"].Host != "1.2.3.4" {
+		t.Errorf("host not saved correctly")
+	}
+}
+
+func TestRunAdd_NonDefaultNetwork_SeedsDefault(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts:    make(map[string]config.HostConfig),
+	})
+
+	addHost = "10.0.0.1"
+	addPort = 2222
+	addUser = "root"
+	addKey = ""
+	addJump = ""
+	addNetwork = "vpn"
+	defer func() { addHost = ""; addPort = 22; addUser = ""; addNetwork = "default" }()
+
+	if err := runAdd(addCmd, []string{"newserver"}); err != nil {
+		t.Fatalf("runAdd error: %v", err)
+	}
+
+	cfg, err := config.Load(cfgFile)
+	if err != nil {
+		t.Fatalf("reload error: %v", err)
+	}
+	// Should have auto-seeded a default profile.
+	if _, ok := cfg.Hosts["newserver"]["default"]; !ok {
+		t.Error("expected default profile to be auto-seeded")
+	}
+	if cfg.Hosts["newserver"]["vpn"].Host != "10.0.0.1" {
+		t.Errorf("vpn profile not saved correctly")
+	}
+}
+
+func TestRunAdd_UpdateExisting(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"srv": {"default": {Host: "old.host"}},
+		},
+	})
+
+	addHost = "new.host"
+	addPort = 22
+	addUser = ""
+	addKey = ""
+	addJump = ""
+	addNetwork = "default"
+	defer func() { addHost = ""; addNetwork = "default" }()
+
+	if err := runAdd(addCmd, []string{"srv"}); err != nil {
+		t.Fatalf("runAdd error: %v", err)
+	}
+
+	cfg, _ := config.Load(cfgFile)
+	if cfg.Hosts["srv"]["default"].Host != "new.host" {
+		t.Errorf("expected host to be updated")
+	}
+}
+
+func TestRunConnect_UnknownHost(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts:    make(map[string]config.HostConfig),
+	})
+
+	err := runConnect(connectCmd, []string{"doesnotexist"})
+	if err == nil {
+		t.Error("expected error for unknown host")
+	}
+}
+
+func TestRunConnect_DryRun(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"myserver": {"default": {Host: "1.2.3.4", Port: 22, User: "alice"}},
+		},
+	})
+
+	dryRun = true
+	defer func() { dryRun = false }()
+
+	if err := runConnect(connectCmd, []string{"myserver"}); err != nil {
+		t.Fatalf("runConnect dry-run error: %v", err)
+	}
+}
+
+func TestRunNetwork_EmptyConfig(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts:    make(map[string]config.HostConfig),
+	})
+
+	if err := runNetwork(networkCmd, nil); err != nil {
+		t.Fatalf("runNetwork error: %v", err)
+	}
+}
+
+func TestRunNetworkTest_NotFound(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts:    make(map[string]config.HostConfig),
+	})
+
+	err := runNetworkTest(networkTestCmd, []string{"nonexistent"})
+	if err == nil {
+		t.Error("expected error for unknown network")
+	}
+}
+
+func TestRunNetworkTest_NoChecks(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: map[string]config.NetworkDefinition{
+			"empty": {Priority: 10},
+		},
+		Hosts: make(map[string]config.HostConfig),
+	})
+
+	if err := runNetworkTest(networkTestCmd, []string{"empty"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunNetworkTest_WithChecks(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: map[string]config.NetworkDefinition{
+			"local": {
+				Priority: 10,
+				Checks: []config.NetworkCheck{
+					{Type: config.CheckTypeExec, Command: "true"},
+				},
+			},
+		},
+		Hosts: make(map[string]config.HostConfig),
+	})
+
+	if err := runNetworkTest(networkTestCmd, []string{"local"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

@@ -83,3 +83,34 @@ func TestTableFormatter_NonSlice(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
+
+func TestJSONFormatter_EmptySlice(t *testing.T) {
+	var buf bytes.Buffer
+	if err := New(FormatJSON).Format(&buf, []testRow{}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if strings.TrimSpace(buf.String()) != "[]" {
+		t.Errorf("expected [], got %q", buf.String())
+	}
+}
+
+func TestYAMLFormatter_EmptySlice(t *testing.T) {
+	var buf bytes.Buffer
+	if err := New(FormatYAML).Format(&buf, []testRow{}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestTableFormatter_MultipleRows(t *testing.T) {
+	rows := []testRow{{"a", 1}, {"b", 2}, {"c", 3}}
+	var buf bytes.Buffer
+	if err := New(FormatTable).Format(&buf, rows); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	out := buf.String()
+	for _, name := range []string{"a", "b", "c"} {
+		if !strings.Contains(out, name) {
+			t.Errorf("table missing row %q", name)
+		}
+	}
+}

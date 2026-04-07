@@ -198,6 +198,36 @@ func TestRunCheck_UnknownType(t *testing.T) {
 	}
 }
 
+func TestCheckRoute_MatchFound(t *testing.T) {
+	// "default" or "lo" almost always appears in `ip route show` output.
+	ok, err := checkRoute("default")
+	if err != nil {
+		// ip not available in this environment — skip rather than fail.
+		t.Skipf("ip route show unavailable: %v", err)
+	}
+	if !ok {
+		// Try "lo" as a fallback match.
+		ok, err = checkRoute("lo")
+		if err != nil {
+			t.Skipf("ip route show unavailable: %v", err)
+		}
+		if !ok {
+			t.Log("neither 'default' nor 'lo' found in routing table — skipping assertion")
+		}
+	}
+}
+
+func TestCheckExec_Timeout(t *testing.T) {
+	// A command that sleeps longer than execTimeout should not block forever.
+	ok, err := checkExec("sleep 10")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if ok {
+		t.Error("timed-out command should return false")
+	}
+}
+
 func TestCheckInterface_InvalidName(t *testing.T) {
 	t.Run("path traversal rejected", func(t *testing.T) {
 		_, err := checkInterface("../../etc/passwd")

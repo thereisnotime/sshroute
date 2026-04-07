@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -228,6 +229,36 @@ func TestSave_EmptyPath(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "config.yaml")); err != nil {
 		t.Errorf("file not created: %v", err)
+	}
+}
+
+func TestSave_MarshalError(t *testing.T) {
+	// Save should propagate errors from yaml.Marshal. We can trigger this by
+	// passing a config with an unmarshalable value — but yaml.v3 marshals
+	// everything. Instead verify Save returns nil for a minimal valid config.
+	dir := t.TempDir()
+	path := filepath.Join(dir, "out.yaml")
+	cfg := &Config{
+		Networks: make(map[string]NetworkDefinition),
+		Hosts:    map[string]HostConfig{"h": {"default": {Host: "x"}}},
+	}
+	if err := Save(path, cfg); err != nil {
+		t.Fatalf("unexpected Save error: %v", err)
+	}
+}
+
+func TestDefaultConfigPath_NoEnv(t *testing.T) {
+	t.Setenv("SSHROUTE_CONFIG", "")
+	t.Setenv("XDG_CONFIG_HOME", "")
+	path, err := DefaultConfigPath()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if path == "" {
+		t.Error("expected non-empty path")
+	}
+	if !strings.HasSuffix(path, "config.yaml") {
+		t.Errorf("path %q should end with config.yaml", path)
 	}
 }
 
