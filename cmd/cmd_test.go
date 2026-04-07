@@ -576,6 +576,43 @@ func TestRunConnect_DetectError(t *testing.T) {
 	}
 }
 
+func TestRunConfigEdit_MkdirAllError(t *testing.T) {
+	// /dev/null is a char device — MkdirAll creating a subdir inside it fails.
+	cfgFile = "/dev/null/subdir/config.yaml"
+	t.Setenv("SSHROUTE_CONFIG", "/dev/null/subdir/config.yaml")
+	t.Setenv("EDITOR", "nonexistent_editor_xyz_abc")
+	t.Cleanup(func() { cfgFile = "" })
+
+	err := runConfigEdit(configEditCmd, nil)
+	if err == nil {
+		t.Fatal("expected error creating config directory")
+	}
+}
+
+func TestRunConfigEdit_OpenFileError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root can write anywhere; cannot test OpenFile failure")
+	}
+	dir := t.TempDir()
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	t.Cleanup(func() { os.Chmod(dir, 0o755) })
+
+	path := filepath.Join(dir, "config.yaml")
+	cfgFile = path
+	t.Setenv("SSHROUTE_CONFIG", path)
+	t.Setenv("EDITOR", "nonexistent_editor_xyz_abc")
+
+	err := runConfigEdit(configEditCmd, nil)
+	if err == nil {
+		t.Fatal("expected error creating config file in read-only directory")
+	}
+	if !strings.Contains(err.Error(), "creating config file") {
+		t.Errorf("error = %q, want 'creating config file'", err.Error())
+	}
+}
+
 func TestRunConfigEdit_EmptyCfgFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.yaml")
