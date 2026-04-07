@@ -66,6 +66,26 @@ func TestParseArgs(t *testing.T) {
 			argv: []string{"-l", "bob", "myserver"},
 			want: ParsedArgs{Alias: "myserver", User: "", Remaining: []string{"-l", "bob"}},
 		},
+		{
+			name: "combined port flag -p22",
+			argv: []string{"-p22", "myserver"},
+			want: ParsedArgs{Alias: "myserver", User: "", Remaining: []string{"-p22"}},
+		},
+		{
+			name: "combined login flag -lroot",
+			argv: []string{"-lroot", "myserver"},
+			want: ParsedArgs{Alias: "myserver", User: "", Remaining: []string{"-lroot"}},
+		},
+		{
+			name: "combined identity flag",
+			argv: []string{"-i~/.ssh/id_ed25519", "myserver"},
+			want: ParsedArgs{Alias: "myserver", User: "", Remaining: []string{"-i~/.ssh/id_ed25519"}},
+		},
+		{
+			name: "combined port mixed with other flags",
+			argv: []string{"-p2222", "-v", "alice@myserver"},
+			want: ParsedArgs{Alias: "myserver", User: "alice", Remaining: []string{"-p2222", "-v"}},
+		},
 	}
 
 	for _, tt := range tests {

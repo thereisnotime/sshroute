@@ -64,6 +64,11 @@ func ParseArgs(argv []string) ParsedArgs {
 		}
 
 		if strings.HasPrefix(arg, "-") {
+			// Check for combined form: -p22, -lroot, -i~/.ssh/key, etc.
+			if len(arg) > 2 && valueFlags[arg[:2]] {
+				result.Remaining = append(result.Remaining, arg)
+				continue
+			}
 			// Boolean / compound flag — keep in Remaining, not the host.
 			result.Remaining = append(result.Remaining, arg)
 			continue
