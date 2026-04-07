@@ -17,7 +17,7 @@ func checkInterface(name string) (bool, error) {
 		return false, fmt.Errorf("invalid interface name: %q", name)
 	}
 	path := "/sys/class/net/" + name + "/operstate"
-	data, err := os.ReadFile(path) //nolint:gosec // G304: path is constructed from a validated interface name under a fixed sysfs prefix
+	data, err := os.ReadFile(path) // #nosec G304 -- path is constructed from a validated interface name under the fixed /sys/class/net/ prefix
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return false, nil

@@ -192,6 +192,68 @@ func TestExpandTilde(t *testing.T) {
 	}
 }
 
+func TestLoad_ExpandsKeyTilde(t *testing.T) {
+	home, _ := os.UserHomeDir()
+	content := `
+hosts:
+  myserver:
+    default:
+      host: 1.2.3.4
+      key: ~/.ssh/id_ed25519
+`
+	f := writeTempConfig(t, content)
+	cfg, err := Load(f)
+	if err != nil {
+		t.Fatalf("Load error: %v", err)
+	}
+	want := filepath.Join(home, ".ssh/id_ed25519")
+	got := cfg.Hosts["myserver"]["default"].Key
+	if got != want {
+		t.Errorf("key = %q, want %q (tilde not expanded)", got, want)
+	}
+}
+
+func TestSave_EmptyPath(t *testing.T) {
+	// Save with empty path resolves to DefaultConfigPath.
+	// We override via env so it goes somewhere temp.
+	dir := t.TempDir()
+	t.Setenv("SSHROUTE_CONFIG", filepath.Join(dir, "config.yaml"))
+
+	cfg := &Config{
+		Networks: make(map[string]NetworkDefinition),
+		Hosts:    map[string]HostConfig{"h": {"default": {Host: "x"}}},
+	}
+	if err := Save("", cfg); err != nil {
+		t.Fatalf("Save error: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "config.yaml")); err != nil {
+		t.Errorf("file not created: %v", err)
+	}
+}
+
+func TestLoad_EmptyPath(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	content := `
+hosts:
+  s:
+    default:
+      host: 1.2.3.4
+`
+	if err := os.WriteFile(cfgPath, []byte(content), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	t.Setenv("SSHROUTE_CONFIG", cfgPath)
+
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatalf("Load error: %v", err)
+	}
+	if cfg.Hosts["s"]["default"].Host != "1.2.3.4" {
+		t.Errorf("host mismatch")
+	}
+}
+
 func writeTempConfig(t *testing.T, content string) string {
 	t.Helper()
 	f, err := os.CreateTemp(t.TempDir(), "sshroute-*.yaml")

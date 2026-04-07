@@ -97,7 +97,7 @@ func fallbackPing(host string, timeout time.Duration) (bool, error) {
 	if secs < 1 {
 		secs = 1
 	}
-	cmd := exec.Command("ping", "-c1", "-W"+strconv.Itoa(secs), host) //nolint:gosec // G204: "ping" is a fixed binary; host comes from the user's own config, not from external input
+	cmd := exec.Command("ping", "-c1", "-W"+strconv.Itoa(secs), host) // #nosec G204 -- "ping" binary path is fixed; host comes from the user's own validated config
 	err := cmd.Run()
 	if err == nil {
 		return true, nil

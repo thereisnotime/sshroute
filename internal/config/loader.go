@@ -24,7 +24,7 @@ func DefaultConfigPath() (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("expanding SSHROUTE_CONFIG: %w", err)
 		}
-		slog.Debug("config path from SSHROUTE_CONFIG", "path", expanded) //nolint:gosec // G115: slog uses structured key-value pairs, not format strings — no injection risk
+		slog.Debug("config path from SSHROUTE_CONFIG", "path", expanded) // #nosec G115 -- slog uses structured key-value pairs, not format strings; no injection risk
 		return expanded, nil
 	}
 
@@ -34,7 +34,7 @@ func DefaultConfigPath() (string, error) {
 			return "", fmt.Errorf("expanding XDG_CONFIG_HOME: %w", err)
 		}
 		p := filepath.Join(expanded, "sshroute", "config.yaml")
-		slog.Debug("config path from XDG_CONFIG_HOME", "path", p) //nolint:gosec // G115: slog uses structured key-value pairs, not format strings — no injection risk
+		slog.Debug("config path from XDG_CONFIG_HOME", "path", p) // #nosec G115 -- slog uses structured key-value pairs, not format strings; no injection risk
 		return p, nil
 	}
 
@@ -62,7 +62,7 @@ func Load(path string) (*Config, error) {
 
 	slog.Debug("loading config", "path", path)
 
-	data, err := os.ReadFile(path) //nolint:gosec // G304: path is the user's own config file, explicitly provided or resolved from XDG/home
+	data, err := os.ReadFile(path) // #nosec G304 -- path is the user's own config file, explicitly provided or resolved from trusted XDG/home locations
 	if err != nil {
 		if os.IsNotExist(err) {
 			slog.Debug("config file not found, using empty config", "path", path)

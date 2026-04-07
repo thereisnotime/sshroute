@@ -71,7 +71,7 @@ func runConfigEdit(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("editor %q not found in PATH: %w", editor, err)
 	}
 
-	if err := syscall.Exec(editorPath, []string{editorPath, path}, os.Environ()); err != nil { //nolint:gosec // G204: editor is resolved via LookPath from user $EDITOR — standard pattern used by git, etc.
+	if err := syscall.Exec(editorPath, []string{editorPath, path}, os.Environ()); err != nil { // #nosec G204 -- editor path resolved via LookPath from $EDITOR; standard pattern used by git, kubectl, etc.
 		return fmt.Errorf("exec %s: %w", editorPath, err)
 	}
 	// Unreachable — syscall.Exec replaces the process.

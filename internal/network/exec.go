@@ -18,7 +18,7 @@ func checkExec(command string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), execTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "sh", "-c", command) //nolint:gosec // G204: user-defined network check command; execution of arbitrary shell commands is the explicit purpose of this check type
+	cmd := exec.CommandContext(ctx, "sh", "-c", command) // #nosec G204 -- user-defined network check command; executing arbitrary shell commands is the explicit purpose of this check type
 	cmd.Stderr = openDevNull()
 
 	err := cmd.Run()

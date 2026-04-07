@@ -147,3 +147,69 @@ func TestCheckRoute(t *testing.T) {
 		}
 	})
 }
+
+func TestDetect_PingCheck(t *testing.T) {
+	networks := map[string]config.NetworkDefinition{
+		"local": {
+			Priority: 10,
+			Checks:   []config.NetworkCheck{{Type: config.CheckTypePing, Host: "127.0.0.1", Timeout: "2s"}},
+		},
+	}
+	result, err := Detect(networks)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result != "local" {
+		t.Errorf("result = %q, want %q (127.0.0.1 should be pingable)", result, "local")
+	}
+}
+
+func TestDetect_PingTimeout(t *testing.T) {
+	networks := map[string]config.NetworkDefinition{
+		"unreachable": {
+			Priority: 10,
+			Checks:   []config.NetworkCheck{{Type: config.CheckTypePing, Host: "192.0.2.1", Timeout: "200ms"}},
+		},
+	}
+	result, err := Detect(networks)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result != "default" {
+		t.Errorf("result = %q, want %q (TEST-NET should not respond)", result, "default")
+	}
+}
+
+func TestRunCheck_InvalidTimeout(t *testing.T) {
+	_, err := runCheck(config.NetworkCheck{
+		Type:    config.CheckTypePing,
+		Host:    "127.0.0.1",
+		Timeout: "notaduration",
+	})
+	if err == nil {
+		t.Error("expected error for invalid timeout")
+	}
+}
+
+func TestRunCheck_UnknownType(t *testing.T) {
+	_, err := runCheck(config.NetworkCheck{Type: "magic"})
+	if err == nil {
+		t.Error("expected error for unknown check type")
+	}
+}
+
+func TestCheckInterface_InvalidName(t *testing.T) {
+	t.Run("path traversal rejected", func(t *testing.T) {
+		_, err := checkInterface("../../etc/passwd")
+		if err == nil {
+			t.Error("expected error for path traversal in interface name")
+		}
+	})
+
+	t.Run("dot rejected", func(t *testing.T) {
+		_, err := checkInterface(".")
+		if err == nil {
+			t.Error("expected error for '.' interface name")
+		}
+	})
+}
