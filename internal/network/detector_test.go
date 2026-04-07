@@ -1,0 +1,149 @@
+package network
+
+import (
+	"testing"
+
+	"github.com/thereisnotime/sshroute/internal/config"
+)
+
+func TestDetect_EmptyNetworks(t *testing.T) {
+	result, err := Detect(map[string]config.NetworkDefinition{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result != "default" {
+		t.Errorf("result = %q, want %q", result, "default")
+	}
+}
+
+func TestDetect_PriorityOrdering(t *testing.T) {
+	// Use exec checks with known outcomes to test ordering.
+	networks := map[string]config.NetworkDefinition{
+		"first": {
+			Priority: 10,
+			Checks:   []config.NetworkCheck{{Type: config.CheckTypeExec, Command: "true"}},
+		},
+		"second": {
+			Priority: 20,
+			Checks:   []config.NetworkCheck{{Type: config.CheckTypeExec, Command: "true"}},
+		},
+	}
+	result, err := Detect(networks)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// "first" has lower priority value so it should match first.
+	if result != "first" {
+		t.Errorf("result = %q, want %q (lower priority value wins)", result, "first")
+	}
+}
+
+func TestDetect_AlphabeticalTieBreak(t *testing.T) {
+	networks := map[string]config.NetworkDefinition{
+		"zebra": {Priority: 0, Checks: []config.NetworkCheck{{Type: config.CheckTypeExec, Command: "true"}}},
+		"alpha": {Priority: 0, Checks: []config.NetworkCheck{{Type: config.CheckTypeExec, Command: "true"}}},
+	}
+	result, err := Detect(networks)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result != "alpha" {
+		t.Errorf("result = %q, want %q (alphabetical tie-break)", result, "alpha")
+	}
+}
+
+func TestDetect_FailingCheckSkipsNetwork(t *testing.T) {
+	networks := map[string]config.NetworkDefinition{
+		"failing": {
+			Priority: 10,
+			Checks:   []config.NetworkCheck{{Type: config.CheckTypeExec, Command: "false"}},
+		},
+		"passing": {
+			Priority: 20,
+			Checks:   []config.NetworkCheck{{Type: config.CheckTypeExec, Command: "true"}},
+		},
+	}
+	result, err := Detect(networks)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result != "passing" {
+		t.Errorf("result = %q, want %q", result, "passing")
+	}
+}
+
+func TestDetect_ANDLogic(t *testing.T) {
+	// Both checks must pass for the network to match.
+	networks := map[string]config.NetworkDefinition{
+		"partial": {
+			Priority: 10,
+			Checks: []config.NetworkCheck{
+				{Type: config.CheckTypeExec, Command: "true"},
+				{Type: config.CheckTypeExec, Command: "false"}, // second fails
+			},
+		},
+	}
+	result, err := Detect(networks)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result != "default" {
+		t.Errorf("result = %q, want %q (AND logic: second check fails)", result, "default")
+	}
+}
+
+func TestCheckExec(t *testing.T) {
+	t.Run("true command passes", func(t *testing.T) {
+		ok, err := checkExec("true")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !ok {
+			t.Error("expected true, got false")
+		}
+	})
+
+	t.Run("false command fails", func(t *testing.T) {
+		ok, err := checkExec("false")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if ok {
+			t.Error("expected false, got true")
+		}
+	})
+
+	t.Run("complex command", func(t *testing.T) {
+		ok, err := checkExec("echo hello | grep -q hello")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !ok {
+			t.Error("expected true for grep match")
+		}
+	})
+}
+
+func TestCheckInterface(t *testing.T) {
+	t.Run("nonexistent interface returns false without error", func(t *testing.T) {
+		ok, err := checkInterface("doesnotexist99")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if ok {
+			t.Error("expected false for nonexistent interface")
+		}
+	})
+}
+
+func TestCheckRoute(t *testing.T) {
+	t.Run("bogus string not present", func(t *testing.T) {
+		ok, err := checkRoute("xyzzy-definitely-not-a-route-99999")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if ok {
+			t.Error("expected false for bogus route string")
+		}
+	})
+}
