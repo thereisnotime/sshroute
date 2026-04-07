@@ -124,6 +124,22 @@ func TestValidate(t *testing.T) {
 		}
 	})
 
+	t.Run("empty check type", func(t *testing.T) {
+		cfg := &Config{
+			Networks: map[string]NetworkDefinition{
+				"vpn": {Checks: []NetworkCheck{{Type: ""}}},
+			},
+			Hosts: map[string]HostConfig{},
+		}
+		err := Validate(cfg)
+		if err == nil {
+			t.Fatal("expected error for empty check type")
+		}
+		if !strings.Contains(err.Error(), "type field is required") {
+			t.Errorf("error = %q, want 'type field is required'", err.Error())
+		}
+	})
+
 	t.Run("unknown check type", func(t *testing.T) {
 		cfg := &Config{
 			Networks: map[string]NetworkDefinition{
