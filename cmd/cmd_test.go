@@ -348,6 +348,67 @@ func TestRunNetworkTest_NoChecks(t *testing.T) {
 	}
 }
 
+func TestRunConfigEdit_EditorNotFound(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	cfgFile = path
+	t.Setenv("EDITOR", "nonexistent_editor_xyz_abc")
+
+	err := runConfigEdit(configEditCmd, nil)
+	if err == nil {
+		t.Fatal("expected error when editor binary does not exist")
+	}
+	if !strings.Contains(err.Error(), "not found in PATH") {
+		t.Errorf("error = %q, want 'not found in PATH'", err.Error())
+	}
+}
+
+func TestRunConfigEdit_EditorNotFound_FileExists(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	// Pre-create the file so the os.Stat branch sees it as existing.
+	if err := os.WriteFile(path, []byte("# existing config\n"), 0o600); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	cfgFile = path
+	t.Setenv("EDITOR", "nonexistent_editor_xyz_abc")
+
+	err := runConfigEdit(configEditCmd, nil)
+	if err == nil {
+		t.Fatal("expected error when editor binary does not exist")
+	}
+	if !strings.Contains(err.Error(), "not found in PATH") {
+		t.Errorf("error = %q, want 'not found in PATH'", err.Error())
+	}
+}
+
+func TestRunConfig_DefaultConfigPath(t *testing.T) {
+	// With cfgFile unset, runConfig must fall back to DefaultConfigPath which
+	// reads SSHROUTE_CONFIG (or the OS default). Point it at a temp path so
+	// the test is hermetic and the printed path is predictable.
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	t.Setenv("SSHROUTE_CONFIG", path)
+	cfgFile = "" // force the DefaultConfigPath() branch
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	err := runConfig(configCmd, nil)
+	w.Close()
+	os.Stdout = old
+
+	if err != nil {
+		t.Fatalf("runConfig error: %v", err)
+	}
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	if !strings.Contains(buf.String(), path) {
+		t.Errorf("output %q does not contain path %q", buf.String(), path)
+	}
+}
+
 func TestRunNetworkTest_WithChecks(t *testing.T) {
 	withTempConfig(t, &config.Config{
 		Networks: map[string]config.NetworkDefinition{

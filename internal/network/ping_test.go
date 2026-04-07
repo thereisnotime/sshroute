@@ -64,3 +64,22 @@ func TestIsPermissionError(t *testing.T) {
 	}
 }
 
+func TestIcmpPing_InvalidHost(t *testing.T) {
+	// An invalid hostname that cannot be resolved should return a resolve error,
+	// not a permission error, so icmpPing must return (false, non-nil error).
+	_, err := icmpPing("invalid@@hostname.xyz.invalid", 1*time.Second)
+	if err == nil {
+		t.Fatal("expected error for unresolvable hostname, got nil")
+	}
+}
+
+func TestCheckPing_InvalidHost_NonPermissionError(t *testing.T) {
+	// An invalid hostname triggers the DNS-resolve failure inside icmpPing.
+	// That error is NOT a permission error, so checkPing must return it directly
+	// rather than falling back to the system ping binary.
+	_, err := checkPing("invalid@@hostname.xyz.invalid", 1*time.Second)
+	if err == nil {
+		t.Fatal("expected error for unresolvable hostname, got nil")
+	}
+}
+
