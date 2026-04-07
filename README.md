@@ -3,8 +3,10 @@
 [![CI](https://github.com/thereisnotime/sshroute/actions/workflows/ci.yaml/badge.svg)](https://github.com/thereisnotime/sshroute/actions/workflows/ci.yaml)
 [![Release](https://github.com/thereisnotime/sshroute/actions/workflows/release.yaml/badge.svg)](https://github.com/thereisnotime/sshroute/actions/workflows/release.yaml)
 [![Latest Release](https://img.shields.io/github/v/release/thereisnotime/sshroute)](https://github.com/thereisnotime/sshroute/releases/latest)
+[![codecov](https://codecov.io/gh/thereisnotime/sshroute/branch/main/graph/badge.svg)](https://codecov.io/gh/thereisnotime/sshroute)
 [![Go Report Card](https://goreportcard.com/badge/github.com/thereisnotime/sshroute)](https://goreportcard.com/report/github.com/thereisnotime/sshroute)
 [![Go Reference](https://pkg.go.dev/badge/github.com/thereisnotime/sshroute.svg)](https://pkg.go.dev/github.com/thereisnotime/sshroute)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/thereisnotime/sshroute/badge)](https://scorecard.dev/viewer/?uri=github.com/thereisnotime/sshroute)
 
 Network-aware SSH router. Detects your active network or VPN and automatically selects the right host, port, identity file, and jump host for each SSH connection — without touching `~/.ssh/config`.
 
@@ -73,6 +75,7 @@ sshroute network
 
 | Command | Description |
 |---|---|
+| `init` | Create a starter config file with commented examples |
 | `connect <alias>` | Connect to a host — resolves params for the active network |
 | `list` | List all configured hosts and their active profile |
 | `add <alias>` | Add or update a host (use `--network` for per-network overrides) |
