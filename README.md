@@ -7,6 +7,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/thereisnotime/sshroute)](https://goreportcard.com/report/github.com/thereisnotime/sshroute)
 [![Go Reference](https://pkg.go.dev/badge/github.com/thereisnotime/sshroute.svg)](https://pkg.go.dev/github.com/thereisnotime/sshroute)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/thereisnotime/sshroute/badge)](https://scorecard.dev/viewer/?uri=github.com/thereisnotime/sshroute)
+[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/10920/badge)](https://bestpractices.coreinfrastructure.org/projects/10920)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 Network-aware SSH router. Detects your active network or VPN and automatically selects the right host, port, identity file, and jump host for each SSH connection — without touching `~/.ssh/config`.
@@ -21,6 +22,22 @@ ssh myserver
   → resolves: 10.100.0.50:2222 via bastion.corp.internal
   → exec /usr/bin/ssh -p 2222 -i ~/.ssh/corp_key -J bastion.corp.internal 10.100.0.50
 ```
+
+## Why sshroute?
+
+### For homelabbers
+
+Your lab probably has at least two realities: you're either sitting at home on the LAN, or you're away and coming in over WireGuard or another VPN. The problem is `~/.ssh/config` doesn't know which one you're in — so you end up with separate aliases (`server-lan`, `server-vpn`), or a jump host that only works half the time, or you just memorize IPs.
+
+sshroute solves this by detecting your current network before every connection. When the WireGuard interface is up and the peer route exists, it connects directly to the tunnel IP. When you're on the LAN, it uses the local address. When neither is reachable, it falls back to the public hostname. One alias, three realities, zero manual switching.
+
+It also intercepts SSH transparently — `git push`, `rsync`, `scp` all go through it automatically once you set up shadow mode. No wrappers, no shell functions, no thinking.
+
+### For corporate environments
+
+Enterprise networks are worse. You have the public internet, maybe a site-to-site VPN, maybe a personal VPN split-tunnel, and inside that you have different jump hosts depending on which environment you're targeting — dev, staging, prod, each with their own bastion and key. Keeping this straight in `~/.ssh/config` means either one enormous config that breaks whenever infra changes, or you write a script that everyone on the team maintains differently.
+
+sshroute lets you define the routing logic declaratively, keep it in a versioned YAML file, and share it across the team. The same config works for everyone — the right network is detected automatically based on what interfaces or routes are active on each machine. Keys, ports, users, and jump hosts resolve without the user having to think about it.
 
 ## Installation
 
