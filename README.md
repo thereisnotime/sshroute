@@ -7,6 +7,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/thereisnotime/sshroute)](https://goreportcard.com/report/github.com/thereisnotime/sshroute)
 [![Go Reference](https://pkg.go.dev/badge/github.com/thereisnotime/sshroute.svg)](https://pkg.go.dev/github.com/thereisnotime/sshroute)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/thereisnotime/sshroute/badge)](https://scorecard.dev/viewer/?uri=github.com/thereisnotime/sshroute)
+[![CII Best Practices](https://www.bestpractices.dev/projects/12389/badge)](https://www.bestpractices.dev/projects/12389)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 Network-aware SSH router. Detects your active network or VPN and automatically selects the right host, port, identity file, and jump host for each SSH connection — without touching `~/.ssh/config`.
