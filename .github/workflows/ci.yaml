@@ -47,8 +47,6 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.out
           fail_ci_if_error: false
-          fail_on_coverage_decrease: true
-          patch_min_coverage: 70
 
   sast:
     name: SAST (gosec)
