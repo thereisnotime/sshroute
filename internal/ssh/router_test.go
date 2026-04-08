@@ -13,6 +13,15 @@ func makeConfig(hosts map[string]config.HostConfig) *config.Config {
 	}
 }
 
+func mustResolve(t *testing.T, cfg *config.Config, host, network string) config.SSHParams {
+	t.Helper()
+	params, err := Resolve(cfg, host, network)
+	if err != nil {
+		t.Fatalf("Resolve(%q, %q): unexpected error: %v", host, network, err)
+	}
+	return params
+}
+
 func TestResolve(t *testing.T) {
 	cfg := makeConfig(map[string]config.HostConfig{
 		"webserver": {
@@ -22,10 +31,7 @@ func TestResolve(t *testing.T) {
 	})
 
 	t.Run("default network", func(t *testing.T) {
-		params, err := Resolve(cfg, "webserver", "default")
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
+		params := mustResolve(t, cfg, "webserver", "default")
 		if params.Host != "1.2.3.4" {
 			t.Errorf("Host = %q, want %q", params.Host, "1.2.3.4")
 		}
@@ -38,10 +44,7 @@ func TestResolve(t *testing.T) {
 	})
 
 	t.Run("vpn network overrides", func(t *testing.T) {
-		params, err := Resolve(cfg, "webserver", "vpn")
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
+		params := mustResolve(t, cfg, "webserver", "vpn")
 		if params.Host != "10.8.0.50" {
 			t.Errorf("Host = %q, want %q", params.Host, "10.8.0.50")
 		}
@@ -58,10 +61,7 @@ func TestResolve(t *testing.T) {
 	})
 
 	t.Run("unknown network falls back to default", func(t *testing.T) {
-		params, err := Resolve(cfg, "webserver", "office")
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
+		params := mustResolve(t, cfg, "webserver", "office")
 		if params.Host != "1.2.3.4" {
 			t.Errorf("Host = %q, want %q", params.Host, "1.2.3.4")
 		}
@@ -92,20 +92,14 @@ func TestResolve(t *testing.T) {
 				"vpn":     {Host: "10.0.0.1", User: "root"},
 			},
 		})
-		params, err := Resolve(cfg2, "srv", "vpn")
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
+		params := mustResolve(t, cfg2, "srv", "vpn")
 		if params.User != "root" {
 			t.Errorf("User = %q, want %q", params.User, "root")
 		}
 	})
 
 	t.Run("empty network string falls back to default", func(t *testing.T) {
-		params, err := Resolve(cfg, "webserver", "")
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
+		params := mustResolve(t, cfg, "webserver", "")
 		if params.Host != "1.2.3.4" {
 			t.Errorf("Host = %q, want %q", params.Host, "1.2.3.4")
 		}

@@ -25,10 +25,13 @@ signs:
   - cmd: cosign
     args:
       - sign-blob
-      - --bundle=${signature}
+      - --output-signature=${signature}
+      - --output-certificate=${certificate}
+      - --new-bundle-format=false
       - ${artifact}
       - --yes
-    signature: ${artifact}.bundle
+    signature: ${artifact}.sig
+    certificate: ${artifact}.pem
     artifacts: checksum
 
 sboms:
