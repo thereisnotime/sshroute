@@ -20,46 +20,60 @@ func Validate(cfg *Config) error {
 	for networkName, def := range cfg.Networks {
 		for i, check := range def.Checks {
 			prefix := fmt.Sprintf("network %q check[%d]", networkName, i)
-
-			switch check.Type {
-			case CheckTypeRoute:
-				if check.Match == "" {
-					errs = append(errs, fmt.Errorf("%s: route check requires a non-empty match field", prefix))
-				}
-			case CheckTypeInterface:
-				if check.Match == "" {
-					errs = append(errs, fmt.Errorf("%s: interface check requires a non-empty match field", prefix))
-				}
-			case CheckTypePing:
-				if check.Host == "" {
-					errs = append(errs, fmt.Errorf("%s: ping check requires a non-empty host field", prefix))
-				}
-			case CheckTypeExec:
-				if check.Command == "" {
-					errs = append(errs, fmt.Errorf("%s: exec check requires a non-empty command field", prefix))
-				}
-			case "":
-				errs = append(errs, fmt.Errorf("%s: type field is required", prefix))
-			default:
-				errs = append(errs, fmt.Errorf("%s: unknown type %q (must be route, interface, ping, or exec)", prefix, check.Type))
+			if err := validateNetworkCheck(prefix, check); err != nil {
+				errs = append(errs, err)
 			}
 		}
 	}
 
 	for hostName, hostCfg := range cfg.Hosts {
-		defaultProfile, hasDefault := hostCfg["default"]
-		if !hasDefault {
-			errs = append(errs, fmt.Errorf("host %q: missing required \"default\" profile", hostName))
-		} else if defaultProfile.Host == "" {
-			errs = append(errs, fmt.Errorf("host %q: default profile must have a non-empty host field", hostName))
-		}
-
-		for profileName, params := range hostCfg {
-			if params.Port != 0 && (params.Port < 1 || params.Port > 65535) {
-				errs = append(errs, fmt.Errorf("host %q profile %q: port %d is out of range (must be 1–65535)", hostName, profileName, params.Port))
-			}
-		}
+		errs = append(errs, validateHost(hostName, hostCfg)...)
 	}
 
 	return errors.Join(errs...)
+}
+
+func validateNetworkCheck(prefix string, check NetworkCheck) error {
+	switch check.Type {
+	case CheckTypeRoute:
+		if check.Match == "" {
+			return fmt.Errorf("%s: route check requires a non-empty match field", prefix)
+		}
+	case CheckTypeInterface:
+		if check.Match == "" {
+			return fmt.Errorf("%s: interface check requires a non-empty match field", prefix)
+		}
+	case CheckTypePing:
+		if check.Host == "" {
+			return fmt.Errorf("%s: ping check requires a non-empty host field", prefix)
+		}
+	case CheckTypeExec:
+		if check.Command == "" {
+			return fmt.Errorf("%s: exec check requires a non-empty command field", prefix)
+		}
+	case "":
+		return fmt.Errorf("%s: type field is required", prefix)
+	default:
+		return fmt.Errorf("%s: unknown type %q (must be route, interface, ping, or exec)", prefix, check.Type)
+	}
+	return nil
+}
+
+func validateHost(hostName string, hostCfg HostConfig) []error {
+	var errs []error
+
+	defaultProfile, hasDefault := hostCfg["default"]
+	if !hasDefault {
+		errs = append(errs, fmt.Errorf("host %q: missing required \"default\" profile", hostName))
+	} else if defaultProfile.Host == "" {
+		errs = append(errs, fmt.Errorf("host %q: default profile must have a non-empty host field", hostName))
+	}
+
+	for profileName, params := range hostCfg {
+		if params.Port != 0 && (params.Port < 1 || params.Port > 65535) {
+			errs = append(errs, fmt.Errorf("host %q profile %q: port %d is out of range (must be 1–65535)", hostName, profileName, params.Port))
+		}
+	}
+
+	return errs
 }

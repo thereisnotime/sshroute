@@ -27,145 +27,116 @@ func TestValidate(t *testing.T) {
 		}
 	})
 
-	t.Run("missing default profile", func(t *testing.T) {
-		cfg := &Config{
-			Hosts: map[string]HostConfig{
-				"myserver": {"vpn": {Host: "10.0.0.1"}},
+	errCases := []struct {
+		name    string
+		cfg     *Config
+		wantMsg string
+	}{
+		{
+			name: "missing default profile",
+			cfg: &Config{
+				Hosts: map[string]HostConfig{
+					"myserver": {"vpn": {Host: "10.0.0.1"}},
+				},
 			},
-		}
-		err := Validate(cfg)
-		if err == nil {
-			t.Fatal("expected error, got nil")
-		}
-		if !strings.Contains(err.Error(), "default") {
-			t.Errorf("error should mention 'default', got: %v", err)
-		}
-	})
+			wantMsg: "default",
+		},
+		{
+			name: "default profile missing host",
+			cfg: &Config{
+				Hosts: map[string]HostConfig{
+					"myserver": {"default": {Port: 22}},
+				},
+			},
+			wantMsg: "host",
+		},
+		{
+			name: "port out of range",
+			cfg: &Config{
+				Hosts: map[string]HostConfig{
+					"myserver": {"default": {Host: "1.2.3.4", Port: 99999}},
+				},
+			},
+			wantMsg: "port",
+		},
+		{
+			name: "route check missing match",
+			cfg: &Config{
+				Networks: map[string]NetworkDefinition{
+					"vpn": {Checks: []NetworkCheck{{Type: CheckTypeRoute}}},
+				},
+				Hosts: map[string]HostConfig{},
+			},
+		},
+		{
+			name: "interface check missing match",
+			cfg: &Config{
+				Networks: map[string]NetworkDefinition{
+					"vpn": {Checks: []NetworkCheck{{Type: CheckTypeInterface}}},
+				},
+				Hosts: map[string]HostConfig{},
+			},
+		},
+		{
+			name: "ping check missing host",
+			cfg: &Config{
+				Networks: map[string]NetworkDefinition{
+					"office": {Checks: []NetworkCheck{{Type: CheckTypePing}}},
+				},
+				Hosts: map[string]HostConfig{},
+			},
+		},
+		{
+			name: "exec check missing command",
+			cfg: &Config{
+				Networks: map[string]NetworkDefinition{
+					"corp": {Checks: []NetworkCheck{{Type: CheckTypeExec}}},
+				},
+				Hosts: map[string]HostConfig{},
+			},
+		},
+		{
+			name: "empty check type",
+			cfg: &Config{
+				Networks: map[string]NetworkDefinition{
+					"vpn": {Checks: []NetworkCheck{{Type: ""}}},
+				},
+				Hosts: map[string]HostConfig{},
+			},
+			wantMsg: "type field is required",
+		},
+		{
+			name: "unknown check type",
+			cfg: &Config{
+				Networks: map[string]NetworkDefinition{
+					"vpn": {Checks: []NetworkCheck{{Type: "magic", Match: "x"}}},
+				},
+				Hosts: map[string]HostConfig{},
+			},
+		},
+		{
+			name: "multiple errors reported together",
+			cfg: &Config{
+				Networks: map[string]NetworkDefinition{
+					"vpn": {Checks: []NetworkCheck{{Type: CheckTypeRoute}}}, // missing match
+				},
+				Hosts: map[string]HostConfig{
+					"a": {"vpn": {Host: "1.2.3.4"}},        // missing default
+					"b": {"default": {Host: "x", Port: -1}}, // invalid port
+				},
+			},
+		},
+	}
 
-	t.Run("default profile missing host", func(t *testing.T) {
-		cfg := &Config{
-			Hosts: map[string]HostConfig{
-				"myserver": {"default": {Port: 22}},
-			},
-		}
-		err := Validate(cfg)
-		if err == nil {
-			t.Fatal("expected error, got nil")
-		}
-		if !strings.Contains(err.Error(), "host") {
-			t.Errorf("error should mention 'host', got: %v", err)
-		}
-	})
-
-	t.Run("port out of range", func(t *testing.T) {
-		cfg := &Config{
-			Hosts: map[string]HostConfig{
-				"myserver": {"default": {Host: "1.2.3.4", Port: 99999}},
-			},
-		}
-		err := Validate(cfg)
-		if err == nil {
-			t.Fatal("expected error for out-of-range port")
-		}
-		if !strings.Contains(err.Error(), "port") {
-			t.Errorf("error should mention 'port', got: %v", err)
-		}
-	})
-
-	t.Run("route check missing match", func(t *testing.T) {
-		cfg := &Config{
-			Networks: map[string]NetworkDefinition{
-				"vpn": {Checks: []NetworkCheck{{Type: CheckTypeRoute}}},
-			},
-			Hosts: map[string]HostConfig{},
-		}
-		err := Validate(cfg)
-		if err == nil {
-			t.Fatal("expected error for route check without match")
-		}
-	})
-
-	t.Run("interface check missing match", func(t *testing.T) {
-		cfg := &Config{
-			Networks: map[string]NetworkDefinition{
-				"vpn": {Checks: []NetworkCheck{{Type: CheckTypeInterface}}},
-			},
-			Hosts: map[string]HostConfig{},
-		}
-		err := Validate(cfg)
-		if err == nil {
-			t.Fatal("expected error for interface check without match")
-		}
-	})
-
-	t.Run("ping check missing host", func(t *testing.T) {
-		cfg := &Config{
-			Networks: map[string]NetworkDefinition{
-				"office": {Checks: []NetworkCheck{{Type: CheckTypePing}}},
-			},
-			Hosts: map[string]HostConfig{},
-		}
-		err := Validate(cfg)
-		if err == nil {
-			t.Fatal("expected error for ping check without host")
-		}
-	})
-
-	t.Run("exec check missing command", func(t *testing.T) {
-		cfg := &Config{
-			Networks: map[string]NetworkDefinition{
-				"corp": {Checks: []NetworkCheck{{Type: CheckTypeExec}}},
-			},
-			Hosts: map[string]HostConfig{},
-		}
-		err := Validate(cfg)
-		if err == nil {
-			t.Fatal("expected error for exec check without command")
-		}
-	})
-
-	t.Run("empty check type", func(t *testing.T) {
-		cfg := &Config{
-			Networks: map[string]NetworkDefinition{
-				"vpn": {Checks: []NetworkCheck{{Type: ""}}},
-			},
-			Hosts: map[string]HostConfig{},
-		}
-		err := Validate(cfg)
-		if err == nil {
-			t.Fatal("expected error for empty check type")
-		}
-		if !strings.Contains(err.Error(), "type field is required") {
-			t.Errorf("error = %q, want 'type field is required'", err.Error())
-		}
-	})
-
-	t.Run("unknown check type", func(t *testing.T) {
-		cfg := &Config{
-			Networks: map[string]NetworkDefinition{
-				"vpn": {Checks: []NetworkCheck{{Type: "magic", Match: "x"}}},
-			},
-			Hosts: map[string]HostConfig{},
-		}
-		err := Validate(cfg)
-		if err == nil {
-			t.Fatal("expected error for unknown check type")
-		}
-	})
-
-	t.Run("multiple errors reported together", func(t *testing.T) {
-		cfg := &Config{
-			Networks: map[string]NetworkDefinition{
-				"vpn": {Checks: []NetworkCheck{{Type: CheckTypeRoute}}}, // missing match
-			},
-			Hosts: map[string]HostConfig{
-				"a": {"vpn": {Host: "1.2.3.4"}},       // missing default
-				"b": {"default": {Host: "x", Port: -1}}, // invalid port
-			},
-		}
-		err := Validate(cfg)
-		if err == nil {
-			t.Fatal("expected multiple errors, got nil")
-		}
-	})
+	for _, tc := range errCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := Validate(tc.cfg)
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			if tc.wantMsg != "" && !strings.Contains(err.Error(), tc.wantMsg) {
+				t.Errorf("error = %q, want message containing %q", err.Error(), tc.wantMsg)
+			}
+		})
+	}
 }
