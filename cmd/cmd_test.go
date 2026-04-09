@@ -10,7 +10,6 @@ import (
 	"github.com/thereisnotime/sshroute/internal/config"
 )
 
-
 func withTempConfig(t *testing.T, cfg *config.Config) string {
 	t.Helper()
 	dir := t.TempDir()

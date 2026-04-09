@@ -23,6 +23,15 @@ jobs:
       - name: Verify go.sum is tidy
         run: go mod tidy && git diff --exit-code go.sum
 
+      - name: Check formatting
+        run: |
+          files=$(gofmt -s -l .)
+          if [ -n "$files" ]; then
+            echo "The following files are not gofmt'd:"
+            echo "$files"
+            exit 1
+          fi
+
       - name: Vet
         run: go vet ./...
 

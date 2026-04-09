@@ -121,7 +121,7 @@ func TestValidate(t *testing.T) {
 					"vpn": {Checks: []NetworkCheck{{Type: CheckTypeRoute}}}, // missing match
 				},
 				Hosts: map[string]HostConfig{
-					"a": {"vpn": {Host: "1.2.3.4"}},        // missing default
+					"a": {"vpn": {Host: "1.2.3.4"}},         // missing default
 					"b": {"default": {Host: "x", Port: -1}}, // invalid port
 				},
 			},

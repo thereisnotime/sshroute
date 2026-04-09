@@ -92,4 +92,3 @@ func TestCheckPing_InvalidHost_NonPermissionError(t *testing.T) {
 		t.Fatal("expected error for unresolvable hostname, got nil")
 	}
 }
-
