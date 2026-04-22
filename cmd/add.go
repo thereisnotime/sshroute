@@ -13,6 +13,8 @@ var (
 	addUser    string
 	addKey     string
 	addJump    string
+	addComment string
+	addTags    []string
 	addNetwork string
 )
 
@@ -32,11 +34,13 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	params := config.SSHParams{
-		Host: addHost,
-		Port: addPort,
-		User: addUser,
-		Key:  addKey,
-		Jump: addJump,
+		Host:    addHost,
+		Port:    addPort,
+		User:    addUser,
+		Key:     addKey,
+		Jump:    addJump,
+		Comment: addComment,
+		Tags:    addTags,
 	}
 
 	if cfg.Hosts == nil {
@@ -71,6 +75,8 @@ func init() {
 	addCmd.Flags().StringVar(&addUser, "user", "", "SSH user")
 	addCmd.Flags().StringVar(&addKey, "key", "", "path to identity file")
 	addCmd.Flags().StringVar(&addJump, "jump", "", "jump host (ProxyJump)")
+	addCmd.Flags().StringVar(&addComment, "comment", "", "descriptive comment for the host")
+	addCmd.Flags().StringSliceVar(&addTags, "tags", nil, "comma-separated tags for filtering")
 	addCmd.Flags().StringVar(&addNetwork, "network", "default", "network profile to set params for")
 	rootCmd.AddCommand(addCmd)
 }

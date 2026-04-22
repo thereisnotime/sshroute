@@ -27,6 +27,8 @@ type SSHParams struct {
 	User         string     `yaml:"user,omitempty"`
 	Key          string     `yaml:"key,omitempty"`
 	Jump         string     `yaml:"jump,omitempty"`
+	Comment      string     `yaml:"comment,omitempty"`
+	Tags         []string   `yaml:"tags,omitempty"`
 	ResolvedJump *SSHParams `yaml:"-"`
 }
 
@@ -39,6 +41,8 @@ type HostConfig map[string]SSHParams
 // Lower priority values are evaluated first. The default is 0.
 type NetworkDefinition struct {
 	Priority int            `yaml:"priority,omitempty"`
+	Comment  string         `yaml:"comment,omitempty"`
+	Tags     []string       `yaml:"tags,omitempty"`
 	Checks   []NetworkCheck `yaml:"checks"`
 }
 

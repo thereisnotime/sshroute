@@ -557,6 +557,142 @@ func TestRunList_DetectError(t *testing.T) {
 	}
 }
 
+func TestRunList_FilterByTag(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"web":    {"default": {Host: "1.2.3.4", Tags: []string{"production", "web"}}},
+			"db":     {"default": {Host: "5.6.7.8", Tags: []string{"production", "database"}}},
+			"staging": {"default": {Host: "9.10.11.12", Tags: []string{"staging"}}},
+		},
+	})
+	listFilterTags = []string{"production"}
+	defer func() { listFilterTags = nil }()
+
+	old := output
+	output = "json"
+	defer func() { output = old }()
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	if err := runList(listCmd, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	out := buf.String()
+	if !strings.Contains(out, "web") || !strings.Contains(out, "db") {
+		t.Errorf("expected web and db in output, got: %s", out)
+	}
+	if strings.Contains(out, "staging") {
+		t.Errorf("staging should be filtered out, got: %s", out)
+	}
+}
+
+func TestRunList_FilterByText(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"web":    {"default": {Host: "1.2.3.4", User: "alice", Comment: "frontend server"}},
+			"db":     {"default": {Host: "5.6.7.8", User: "postgres"}},
+		},
+	})
+	listFilterText = "frontend"
+	defer func() { listFilterText = "" }()
+
+	old := output
+	output = "json"
+	defer func() { output = old }()
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	if err := runList(listCmd, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	out := buf.String()
+	if !strings.Contains(out, "web") {
+		t.Errorf("expected web in output, got: %s", out)
+	}
+	if strings.Contains(out, "\"db\"") {
+		t.Errorf("db should be filtered out, got: %s", out)
+	}
+}
+
+func TestRunList_CommentAndTagsInOutput(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"srv": {"default": {Host: "1.2.3.4", Comment: "test server", Tags: []string{"zone01", "dev"}}},
+		},
+	})
+
+	old := output
+	output = "json"
+	defer func() { output = old }()
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	if err := runList(listCmd, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	out := buf.String()
+	if !strings.Contains(out, "test server") {
+		t.Errorf("expected comment in output, got: %s", out)
+	}
+	if !strings.Contains(out, "zone01,dev") {
+		t.Errorf("expected tags in output, got: %s", out)
+	}
+}
+
+func TestRunConnect_DryRunWithExtraArgs(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"myserver": {"default": {Host: "1.2.3.4", Port: 22, User: "alice"}},
+		},
+	})
+
+	dryRun = true
+	defer func() { dryRun = false }()
+
+	if err := runConnect(connectCmd, []string{"myserver", "whoami"}); err != nil {
+		t.Fatalf("runConnect dry-run with extra args error: %v", err)
+	}
+}
+
+func TestRunConnect_DryRunWithJumpAlias(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"gateway": {"default": {Host: "gw.example.com", Port: 22, User: "admin", Key: "~/.ssh/gw_key"}},
+			"backend": {"default": {Host: "192.168.1.10", Port: 2222, User: "root", Jump: "gateway"}},
+		},
+	})
+
+	dryRun = true
+	defer func() { dryRun = false }()
+
+	if err := runConnect(connectCmd, []string{"backend"}); err != nil {
+		t.Fatalf("runConnect dry-run with jump alias error: %v", err)
+	}
+}
+
 func TestRunConnect_DetectError(t *testing.T) {
 	withTempConfig(t, &config.Config{
 		Networks: map[string]config.NetworkDefinition{

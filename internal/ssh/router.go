@@ -56,6 +56,12 @@ func resolveRecursive(cfg *config.Config, alias, network string, visited map[str
 			if override.Jump != "" {
 				merged.Jump = override.Jump
 			}
+			if override.Comment != "" {
+				merged.Comment = override.Comment
+			}
+			if len(override.Tags) > 0 {
+				merged.Tags = override.Tags
+			}
 		}
 	}
 
