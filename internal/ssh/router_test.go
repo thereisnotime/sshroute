@@ -108,6 +108,45 @@ func TestResolve(t *testing.T) {
 			t.Errorf("Host = %q, want %q", params.Host, "1.2.3.4")
 		}
 	})
+
+	t.Run("vpn override with comment", func(t *testing.T) {
+		cfg2 := makeConfig(map[string]config.HostConfig{
+			"srv": {
+				"default": {Host: "1.2.3.4", Comment: "default comment"},
+				"vpn":     {Host: "10.0.0.1", Comment: "vpn comment"},
+			},
+		})
+		params := mustResolve(t, cfg2, "srv", "vpn")
+		if params.Comment != "vpn comment" {
+			t.Errorf("Comment = %q, want %q", params.Comment, "vpn comment")
+		}
+	})
+
+	t.Run("vpn override with tags", func(t *testing.T) {
+		cfg2 := makeConfig(map[string]config.HostConfig{
+			"srv": {
+				"default": {Host: "1.2.3.4", Tags: []string{"prod"}},
+				"vpn":     {Host: "10.0.0.1", Tags: []string{"internal", "secure"}},
+			},
+		})
+		params := mustResolve(t, cfg2, "srv", "vpn")
+		if len(params.Tags) != 2 || params.Tags[0] != "internal" {
+			t.Errorf("Tags = %v, want [internal secure]", params.Tags)
+		}
+	})
+
+	t.Run("vpn override with jump", func(t *testing.T) {
+		cfg2 := makeConfig(map[string]config.HostConfig{
+			"srv": {
+				"default": {Host: "1.2.3.4", Jump: "bastion1"},
+				"vpn":     {Host: "10.0.0.1", Jump: "bastion2"},
+			},
+		})
+		params := mustResolve(t, cfg2, "srv", "vpn")
+		if params.Jump != "bastion2" {
+			t.Errorf("Jump = %q, want %q", params.Jump, "bastion2")
+		}
+	})
 }
 
 func TestResolveJumpAlias(t *testing.T) {
