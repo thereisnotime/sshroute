@@ -561,8 +561,8 @@ func TestRunList_FilterByTag(t *testing.T) {
 	withTempConfig(t, &config.Config{
 		Networks: make(map[string]config.NetworkDefinition),
 		Hosts: map[string]config.HostConfig{
-			"web":    {"default": {Host: "1.2.3.4", Tags: []string{"production", "web"}}},
-			"db":     {"default": {Host: "5.6.7.8", Tags: []string{"production", "database"}}},
+			"web":     {"default": {Host: "1.2.3.4", Tags: []string{"production", "web"}}},
+			"db":      {"default": {Host: "5.6.7.8", Tags: []string{"production", "database"}}},
 			"staging": {"default": {Host: "9.10.11.12", Tags: []string{"staging"}}},
 		},
 	})
@@ -597,8 +597,8 @@ func TestRunList_FilterByText(t *testing.T) {
 	withTempConfig(t, &config.Config{
 		Networks: make(map[string]config.NetworkDefinition),
 		Hosts: map[string]config.HostConfig{
-			"web":    {"default": {Host: "1.2.3.4", User: "alice", Comment: "frontend server"}},
-			"db":     {"default": {Host: "5.6.7.8", User: "postgres"}},
+			"web": {"default": {Host: "1.2.3.4", User: "alice", Comment: "frontend server"}},
+			"db":  {"default": {Host: "5.6.7.8", User: "postgres"}},
 		},
 	})
 	listFilterText = "frontend"
