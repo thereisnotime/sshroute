@@ -16,11 +16,16 @@ const starterConfig = `# sshroute configuration
 # Networks are evaluated in priority order (lower value = checked first).
 # All checks within a network must pass (AND logic).
 # The first matching network wins; "default" is used when none match.
+#
+# Both networks and hosts support optional "comment" and "tags" fields.
+# Use them to organize and filter: sshroute list --tag production
 
 networks: {}
   # Uncomment and adjust the examples below:
   #
   # vpn:
+  #   comment: "Corporate VPN (example)"
+  #   tags: [corp, example]
   #   priority: 10
   #   checks:
   #     - type: interface
@@ -29,6 +34,8 @@ networks: {}
   #       match: 10.8.0.0    # subnet must be in routing table
   #
   # office:
+  #   comment: "Office LAN (example)"
+  #   tags: [corp, example]
   #   priority: 20
   #   checks:
   #     - type: ping
@@ -44,6 +51,8 @@ networks: {}
 # Host definitions.
 # Every host requires a "default" profile.
 # Network profiles only need to specify fields that differ from default.
+# The "comment" and "tags" fields on the default profile are used for display
+# and filtering (sshroute list --tag <tag> --filter <text>).
 
 hosts: {}
   # myserver:
@@ -52,6 +61,8 @@ hosts: {}
   #     port: 22
   #     user: alice
   #     key: ~/.ssh/id_ed25519
+  #     comment: "Web server (example)"
+  #     tags: [production, web, example]
   #   vpn:
   #     host: 10.8.0.50
   #     port: 2222

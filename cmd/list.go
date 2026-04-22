@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/thereisnotime/sshroute/internal/network"
@@ -21,7 +22,14 @@ type HostRow struct {
 	User    string `json:"user"    yaml:"user"    table:"USER"`
 	Key     string `json:"key"     yaml:"key"     table:"KEY"`
 	Jump    string `json:"jump"    yaml:"jump"    table:"JUMP"`
+	Comment string `json:"comment" yaml:"comment" table:"COMMENT"`
+	Tags    string `json:"tags"    yaml:"tags"    table:"TAGS"`
 }
+
+var (
+	listFilterTags []string
+	listFilterText string
+)
 
 var listCmd = &cobra.Command{
 	Use:   "list",
@@ -57,7 +65,7 @@ func runList(cmd *cobra.Command, args []string) error {
 			slog.Debug("list: resolve error", "alias", alias, "error", err)
 			continue
 		}
-		rows = append(rows, HostRow{
+		row := HostRow{
 			Alias:   alias,
 			Network: detectedNetwork,
 			Host:    params.Host,
@@ -65,7 +73,13 @@ func runList(cmd *cobra.Command, args []string) error {
 			User:    params.User,
 			Key:     params.Key,
 			Jump:    params.Jump,
-		})
+			Comment: params.Comment,
+			Tags:    strings.Join(params.Tags, ","),
+		}
+		if !matchesFilters(row, params.Tags) {
+			continue
+		}
+		rows = append(rows, row)
 	}
 
 	formatter := outfmt.New(output)
@@ -75,6 +89,38 @@ func runList(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func matchesFilters(row HostRow, tags []string) bool {
+	if len(listFilterTags) > 0 {
+		found := false
+		for _, ft := range listFilterTags {
+			for _, t := range tags {
+				if strings.EqualFold(t, ft) {
+					found = true
+					break
+				}
+			}
+			if found {
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	if listFilterText != "" {
+		needle := strings.ToLower(listFilterText)
+		haystack := strings.ToLower(strings.Join([]string{
+			row.Alias, row.Host, row.User, row.Key, row.Jump, row.Comment, row.Tags,
+		}, " "))
+		if !strings.Contains(haystack, needle) {
+			return false
+		}
+	}
+	return true
+}
+
 func init() {
+	listCmd.Flags().StringSliceVar(&listFilterTags, "tag", nil, "filter hosts by tag (repeatable, OR logic)")
+	listCmd.Flags().StringVar(&listFilterText, "filter", "", "filter hosts by substring across all fields")
 	rootCmd.AddCommand(listCmd)
 }
