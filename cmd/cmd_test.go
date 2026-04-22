@@ -944,3 +944,175 @@ func TestRunRemove_LoadConfigError(t *testing.T) {
 		t.Errorf("expected 'loading config' error, got %v", err)
 	}
 }
+
+func TestRunAdd_SaveError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root can write anywhere")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	cfg := &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts:    make(map[string]config.HostConfig),
+	}
+	if err := config.Save(path, cfg); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	t.Setenv("SSHROUTE_CONFIG", path)
+	cfgFile = path
+
+	addHost = "1.2.3.4"
+	addPort = 22
+	addUser = "alice"
+	addNetwork = "default"
+	defer func() { addHost = ""; addPort = 22; addUser = ""; addNetwork = "default" }()
+
+	// Make dir read-only so Save fails.
+	os.Chmod(dir, 0o555)
+	t.Cleanup(func() { os.Chmod(dir, 0o755) })
+
+	err := runAdd(addCmd, []string{"newserver"})
+	if err == nil || !strings.Contains(err.Error(), "saving config") {
+		t.Errorf("expected 'saving config' error, got %v", err)
+	}
+}
+
+func TestRunRemove_SaveError(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root can write anywhere")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	cfg := &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"srv": {"default": {Host: "1.2.3.4"}},
+		},
+	}
+	if err := config.Save(path, cfg); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	t.Setenv("SSHROUTE_CONFIG", path)
+	cfgFile = path
+
+	// Make dir read-only so Save fails.
+	os.Chmod(dir, 0o555)
+	t.Cleanup(func() { os.Chmod(dir, 0o755) })
+
+	err := runRemove(removeCmd, []string{"srv"})
+	if err == nil || !strings.Contains(err.Error(), "saving config") {
+		t.Errorf("expected 'saving config' error, got %v", err)
+	}
+}
+
+func TestRunAdd_WithCommentAndTags(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts:    make(map[string]config.HostConfig),
+	})
+
+	addHost = "1.2.3.4"
+	addPort = 22
+	addUser = "alice"
+	addComment = "my server"
+	addTags = []string{"prod", "web"}
+	addNetwork = "default"
+	defer func() {
+		addHost = ""
+		addPort = 22
+		addUser = ""
+		addComment = ""
+		addTags = nil
+		addNetwork = "default"
+	}()
+
+	if err := runAdd(addCmd, []string{"tagged-server"}); err != nil {
+		t.Fatalf("runAdd error: %v", err)
+	}
+
+	cfg, err := config.Load(cfgFile)
+	if err != nil {
+		t.Fatalf("reload error: %v", err)
+	}
+	host := cfg.Hosts["tagged-server"]["default"]
+	if host.Comment != "my server" {
+		t.Errorf("Comment = %q, want %q", host.Comment, "my server")
+	}
+	if len(host.Tags) != 2 || host.Tags[0] != "prod" {
+		t.Errorf("Tags = %v, want [prod web]", host.Tags)
+	}
+}
+
+func TestRunConnect_ResolveError(t *testing.T) {
+	// Use a config where the host exists but has a jump alias that creates a
+	// cycle, causing Resolve to fail.
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	cfg := &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"a": {"default": {Host: "a.example.com", Jump: "b"}},
+			"b": {"default": {Host: "b.example.com", Jump: "a"}},
+		},
+	}
+	if err := config.Save(path, cfg); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	t.Setenv("SSHROUTE_CONFIG", path)
+	cfgFile = path
+
+	err := runConnect(connectCmd, []string{"a"})
+	if err == nil || !strings.Contains(err.Error(), "resolving params") {
+		t.Errorf("expected 'resolving params' error, got %v", err)
+	}
+}
+
+func TestRunList_ResolveErrorSkipsHost(t *testing.T) {
+	// Manually create a config file that has a host with a circular jump
+	// chain. The validator won't catch this, but Resolve will fail.
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	cfgContent := `
+hosts:
+  good:
+    default:
+      host: 1.2.3.4
+      port: 22
+  broken-a:
+    default:
+      host: a.example.com
+      jump: broken-b
+  broken-b:
+    default:
+      host: b.example.com
+      jump: broken-a
+`
+	if err := os.WriteFile(path, []byte(cfgContent), 0o600); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	t.Setenv("SSHROUTE_CONFIG", path)
+	cfgFile = path
+
+	old := output
+	output = "json"
+	defer func() { output = old }()
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	if err := runList(listCmd, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	out := buf.String()
+	if !strings.Contains(out, "good") {
+		t.Errorf("expected 'good' host in output, got: %s", out)
+	}
+	if strings.Contains(out, "broken-a") || strings.Contains(out, "broken-b") {
+		t.Errorf("broken hosts should be skipped, got: %s", out)
+	}
+}
