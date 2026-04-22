@@ -58,7 +58,9 @@ func BuildArgv(params config.SSHParams, parsed ParsedArgs) []string {
 		argv = append(argv, "-l", resolvedUser)
 	}
 
-	if params.Jump != "" {
+	if params.ResolvedJump != nil {
+		argv = append(argv, "-o", "ProxyCommand="+buildProxyCommand(params.ResolvedJump))
+	} else if params.Jump != "" {
 		argv = append(argv, "-J", params.Jump)
 	}
 
@@ -66,6 +68,30 @@ func BuildArgv(params config.SSHParams, parsed ParsedArgs) []string {
 	argv = append(argv, parsed.Remaining...)
 
 	return argv
+}
+
+// buildProxyCommand constructs an ssh ProxyCommand string from resolved jump params.
+func buildProxyCommand(jump *config.SSHParams) string {
+	parts := []string{RealSSH}
+	if jump.Key != "" {
+		parts = append(parts, "-i", expandTilde(jump.Key))
+	}
+	if jump.Port != 0 {
+		parts = append(parts, "-p", fmt.Sprintf("%d", jump.Port))
+	}
+	if jump.ResolvedJump != nil {
+		nested := buildProxyCommand(jump.ResolvedJump)
+		parts = append(parts, "-o", fmt.Sprintf("ProxyCommand=%s", nested))
+	} else if jump.Jump != "" {
+		parts = append(parts, "-J", jump.Jump)
+	}
+	parts = append(parts, "-W", "%h:%p")
+	host := jump.Host
+	if jump.User != "" {
+		host = jump.User + "@" + host
+	}
+	parts = append(parts, host)
+	return strings.Join(parts, " ")
 }
 
 // Exec replaces the current process with ssh using the given argv.

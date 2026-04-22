@@ -6,6 +6,10 @@ import (
 	"github.com/thereisnotime/sshroute/internal/config"
 )
 
+func expandTildeForTest(path string) string {
+	return expandTilde(path)
+}
+
 func makeConfig(hosts map[string]config.HostConfig) *config.Config {
 	return &config.Config{
 		Networks: make(map[string]config.NetworkDefinition),
@@ -106,6 +110,73 @@ func TestResolve(t *testing.T) {
 	})
 }
 
+func TestResolveJumpAlias(t *testing.T) {
+	cfg := makeConfig(map[string]config.HostConfig{
+		"gateway": {
+			"default": {Host: "gw.example.com", Port: 22, User: "admin", Key: "~/.ssh/gw_key"},
+			"vpn":     {Host: "10.0.0.1"},
+		},
+		"backend": {
+			"default": {Host: "192.168.1.10", Port: 2222, User: "root", Key: "~/.ssh/backend_key", Jump: "gateway"},
+		},
+	})
+
+	t.Run("jump alias resolved on default network", func(t *testing.T) {
+		params := mustResolve(t, cfg, "backend", "default")
+		if params.Jump != "gateway" {
+			t.Errorf("Jump = %q, want %q", params.Jump, "gateway")
+		}
+		if params.ResolvedJump == nil {
+			t.Fatal("ResolvedJump is nil, want resolved gateway params")
+		}
+		if params.ResolvedJump.Host != "gw.example.com" {
+			t.Errorf("ResolvedJump.Host = %q, want %q", params.ResolvedJump.Host, "gw.example.com")
+		}
+		if params.ResolvedJump.User != "admin" {
+			t.Errorf("ResolvedJump.User = %q, want %q", params.ResolvedJump.User, "admin")
+		}
+		if params.ResolvedJump.Key != "~/.ssh/gw_key" {
+			t.Errorf("ResolvedJump.Key = %q, want %q", params.ResolvedJump.Key, "~/.ssh/gw_key")
+		}
+	})
+
+	t.Run("jump alias resolved with network override", func(t *testing.T) {
+		params := mustResolve(t, cfg, "backend", "vpn")
+		if params.ResolvedJump == nil {
+			t.Fatal("ResolvedJump is nil, want resolved gateway params")
+		}
+		if params.ResolvedJump.Host != "10.0.0.1" {
+			t.Errorf("ResolvedJump.Host = %q, want %q", params.ResolvedJump.Host, "10.0.0.1")
+		}
+	})
+
+	t.Run("non-alias jump is not resolved", func(t *testing.T) {
+		cfg2 := makeConfig(map[string]config.HostConfig{
+			"srv": {
+				"default": {Host: "srv.example.com", Jump: "bastion.example.com"},
+			},
+		})
+		params := mustResolve(t, cfg2, "srv", "default")
+		if params.Jump != "bastion.example.com" {
+			t.Errorf("Jump = %q, want %q", params.Jump, "bastion.example.com")
+		}
+		if params.ResolvedJump != nil {
+			t.Error("ResolvedJump should be nil for non-alias jump")
+		}
+	})
+
+	t.Run("circular jump chain returns error", func(t *testing.T) {
+		cfg3 := makeConfig(map[string]config.HostConfig{
+			"a": {"default": {Host: "a.example.com", Jump: "b"}},
+			"b": {"default": {Host: "b.example.com", Jump: "a"}},
+		})
+		_, err := Resolve(cfg3, "a", "default")
+		if err == nil {
+			t.Error("expected circular jump chain error, got nil")
+		}
+	})
+}
+
 func TestBuildArgv(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -142,6 +213,49 @@ func TestBuildArgv(t *testing.T) {
 			params: config.SSHParams{Host: "myserver"},
 			parsed: ParsedArgs{Remaining: []string{"-v", "uptime"}},
 			want:   []string{RealSSH, "myserver", "-v", "uptime"},
+		},
+		{
+			name: "resolved jump uses ProxyCommand",
+			params: config.SSHParams{
+				Host: "192.168.1.10", Port: 2222, User: "root", Key: "/home/alice/.ssh/bk",
+				Jump:         "gateway",
+				ResolvedJump: &config.SSHParams{Host: "gw.example.com", Port: 22, User: "admin", Key: "~/.ssh/gw_key"},
+			},
+			parsed: ParsedArgs{Remaining: []string{}},
+			want:   []string{RealSSH, "-p", "2222", "-i", "/home/alice/.ssh/bk", "-l", "root", "-o", "ProxyCommand=" + RealSSH + " -i " + expandTildeForTest("~/.ssh/gw_key") + " -p 22 -W %h:%p admin@gw.example.com", "192.168.1.10"},
+		},
+		{
+			name: "resolved jump minimal (host only)",
+			params: config.SSHParams{
+				Host:         "target.internal",
+				ResolvedJump: &config.SSHParams{Host: "jump.example.com"},
+			},
+			parsed: ParsedArgs{Remaining: []string{}},
+			want:   []string{RealSSH, "-o", "ProxyCommand=" + RealSSH + " -W %h:%p jump.example.com", "target.internal"},
+		},
+		{
+			name: "nested resolved jump (multi-hop)",
+			params: config.SSHParams{
+				Host: "deep.internal", User: "root",
+				ResolvedJump: &config.SSHParams{
+					Host: "mid.example.com", Port: 22, User: "hop2", Key: "/k2",
+					ResolvedJump: &config.SSHParams{Host: "edge.example.com", Port: 443, User: "hop1", Key: "/k1"},
+				},
+			},
+			parsed: ParsedArgs{Remaining: []string{}},
+			want:   []string{RealSSH, "-l", "root", "-o", "ProxyCommand=" + RealSSH + " -i /k2 -p 22 -o ProxyCommand=" + RealSSH + " -i /k1 -p 443 -W %h:%p hop1@edge.example.com -W %h:%p hop2@mid.example.com", "deep.internal"},
+		},
+		{
+			name: "resolved jump with raw jump on inner hop",
+			params: config.SSHParams{
+				Host: "target.internal",
+				ResolvedJump: &config.SSHParams{
+					Host: "mid.example.com", User: "admin",
+					Jump: "external-bastion.example.com",
+				},
+			},
+			parsed: ParsedArgs{Remaining: []string{}},
+			want:   []string{RealSSH, "-o", "ProxyCommand=" + RealSSH + " -J external-bastion.example.com -W %h:%p admin@mid.example.com", "target.internal"},
 		},
 	}
 
