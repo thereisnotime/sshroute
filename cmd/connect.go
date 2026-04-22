@@ -13,7 +13,7 @@ import (
 var connectCmd = &cobra.Command{
 	Use:   "connect <host>",
 	Short: "Connect to a configured host using the active network profile",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MinimumNArgs(1),
 	RunE:  runConnect,
 }
 
@@ -41,7 +41,7 @@ func runConnect(cmd *cobra.Command, args []string) error {
 	}
 	slog.Debug("connect: resolved params", "host", params.Host, "port", params.Port, "user", params.User)
 
-	parsed := ssh.ParsedArgs{}
+	parsed := ssh.ParsedArgs{Remaining: args[1:]}
 	argv := ssh.BuildArgv(params, parsed)
 
 	if dryRun {

@@ -22,11 +22,12 @@ type NetworkCheck struct {
 
 // SSHParams holds the resolved SSH connection parameters for one profile.
 type SSHParams struct {
-	Host string `yaml:"host,omitempty"`
-	Port int    `yaml:"port,omitempty"`
-	User string `yaml:"user,omitempty"`
-	Key  string `yaml:"key,omitempty"`
-	Jump string `yaml:"jump,omitempty"`
+	Host         string     `yaml:"host,omitempty"`
+	Port         int        `yaml:"port,omitempty"`
+	User         string     `yaml:"user,omitempty"`
+	Key          string     `yaml:"key,omitempty"`
+	Jump         string     `yaml:"jump,omitempty"`
+	ResolvedJump *SSHParams `yaml:"-"`
 }
 
 // HostConfig maps network profile names (including "default") to SSHParams.
