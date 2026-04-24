@@ -2,8 +2,10 @@
 package ssh
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strings"
@@ -11,6 +13,11 @@ import (
 
 	"github.com/thereisnotime/sshroute/internal/config"
 )
+
+// SSHConnectFailure is the exit code ssh returns when the connection itself fails
+// (timeout, refused, unreachable). Used to distinguish retryable failures from
+// remote-command exits or auth failures.
+const SSHConnectFailure = 255
 
 // RealSSH is the absolute path to the system SSH binary.
 // Using absolute path prevents infinite recursion in shadow/transparent mode.
@@ -102,6 +109,23 @@ func Exec(argv []string) error {
 	}
 	// Unreachable — syscall.Exec replaces the process image.
 	return nil
+}
+
+// Run executes ssh as a subprocess (keeping sshroute alive) and returns its exit code.
+// stdin/stdout/stderr are inherited from the parent. Use this for fallback retry logic.
+func Run(argv []string) (int, error) {
+	cmd := exec.Command(argv[0], argv[1:]...) // #nosec G204 -- argv[0] is always RealSSH, a compile-time constant
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			return exitErr.ExitCode(), nil
+		}
+		return -1, err
+	}
+	return 0, nil
 }
 
 // DryRun prints the resolved command to stdout without executing it.

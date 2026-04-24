@@ -119,10 +119,37 @@ func runShadowMode() {
 		os.Exit(0)
 	}
 
-	// 8. Exec — replace the process.
+	// 8. If SSHROUTE_FALLBACK is set, try all profiles in priority order.
+	if os.Getenv("SSHROUTE_FALLBACK") == "1" {
+		order := ssh.ResolveOrder(cfg, parsed.Alias, detectedNetwork)
+		for _, profileName := range order {
+			p, err := ssh.Resolve(cfg, parsed.Alias, profileName)
+			if err != nil {
+				continue
+			}
+			slog.Debug("shadow mode: fallback trying profile", "profile", profileName, "host", p.Host)
+			a := ssh.BuildArgv(p, parsed)
+			code, err := ssh.Run(a)
+			if err != nil {
+				passthrough()
+				return
+			}
+			if code == 0 {
+				return
+			}
+			if code != ssh.SSHConnectFailure {
+				os.Exit(code)
+			}
+			fmt.Fprintf(os.Stderr, "sshroute: profile %q failed (connection error), trying next\n", profileName)
+		}
+		fmt.Fprintf(os.Stderr, "sshroute: all profiles exhausted\n")
+		os.Exit(ssh.SSHConnectFailure)
+	}
+
+	// 9. Exec — replace the process.
 	if err := ssh.Exec(argv); err != nil {
 		fmt.Fprintf(os.Stderr, "sshroute: exec error: %v\n", err)
-		// 9. On exec error, fall back to real ssh with original args.
+		// 10. On exec error, fall back to real ssh with original args.
 		passthrough()
 	}
 }
