@@ -312,3 +312,80 @@ func TestBuildArgv(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveOrder(t *testing.T) {
+	cfg := &config.Config{
+		Networks: map[string]config.NetworkDefinition{
+			"vpn":    {Priority: 10},
+			"office": {Priority: 20},
+		},
+		Hosts: map[string]config.HostConfig{
+			"srv": {
+				"default": {Host: "1.2.3.4"},
+				"vpn":     {Host: "10.0.0.1"},
+				"office":  {Host: "192.168.1.1"},
+			},
+		},
+	}
+
+	t.Run("detected network is first", func(t *testing.T) {
+		order := ResolveOrder(cfg, "srv", "vpn")
+		if len(order) == 0 || order[0] != "vpn" {
+			t.Errorf("order[0] = %q, want %q", order[0], "vpn")
+		}
+	})
+
+	t.Run("default is always last", func(t *testing.T) {
+		order := ResolveOrder(cfg, "srv", "vpn")
+		if order[len(order)-1] != "default" {
+			t.Errorf("last = %q, want %q", order[len(order)-1], "default")
+		}
+	})
+
+	t.Run("remaining profiles sorted by priority", func(t *testing.T) {
+		order := ResolveOrder(cfg, "srv", "vpn")
+		// vpn(first=detected), office(priority 20), default(last)
+		if len(order) != 3 {
+			t.Fatalf("len = %d, want 3", len(order))
+		}
+		if order[1] != "office" {
+			t.Errorf("order[1] = %q, want %q", order[1], "office")
+		}
+	})
+
+	t.Run("unknown host returns nil", func(t *testing.T) {
+		order := ResolveOrder(cfg, "ghost", "vpn")
+		if order != nil {
+			t.Errorf("expected nil for unknown host, got %v", order)
+		}
+	})
+
+	t.Run("default detected network skips to others", func(t *testing.T) {
+		order := ResolveOrder(cfg, "srv", "default")
+		if order[0] == "default" {
+			t.Error("default should not appear first when other profiles exist")
+		}
+	})
+}
+
+func TestRun(t *testing.T) {
+	t.Run("exit 0 on success", func(t *testing.T) {
+		code, err := Run([]string{"/bin/true"})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if code != 0 {
+			t.Errorf("exit code = %d, want 0", code)
+		}
+	})
+
+	t.Run("non-zero exit code returned", func(t *testing.T) {
+		code, err := Run([]string{"/bin/false"})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if code == 0 {
+			t.Error("expected non-zero exit code from /bin/false")
+		}
+	})
+}
