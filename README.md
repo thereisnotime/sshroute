@@ -58,6 +58,20 @@ docker run --rm -v ~/.config/sshroute:/root/.config/sshroute \
   ghcr.io/thereisnotime/sshroute network
 ```
 
+### Podman
+
+```sh
+podman run --rm -v ~/.config/sshroute:/root/.config/sshroute \
+  ghcr.io/thereisnotime/sshroute network
+```
+
+On SELinux-enabled systems (Fedora, RHEL, etc.) add `:Z` to the volume flag:
+
+```sh
+podman run --rm -v ~/.config/sshroute:/root/.config/sshroute:Z \
+  ghcr.io/thereisnotime/sshroute network
+```
+
 ### Shadow mode (transparent SSH replacement)
 
 Install sshroute as `ssh` earlier in your `$PATH`. All SSH calls — from your terminal, `git`, `rsync`, `scp` — are intercepted automatically. Hosts not in your config pass through to `/usr/bin/ssh` unchanged.
