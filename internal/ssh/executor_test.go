@@ -94,6 +94,83 @@ func TestExpandTildeExecutor_NoTilde(t *testing.T) {
 	}
 }
 
+func TestResolveSSHBinary_EnvVar(t *testing.T) {
+	t.Setenv("SSHROUTE_SSH", "/custom/ssh")
+	got := ResolveSSHBinary(nil)
+	if got != "/custom/ssh" {
+		t.Errorf("got %q, want /custom/ssh", got)
+	}
+}
+
+func TestResolveSSHBinary_Config(t *testing.T) {
+	t.Setenv("SSHROUTE_SSH", "")
+	cfg := &config.Config{SSHBinary: "/configured/ssh"}
+	got := ResolveSSHBinary(cfg)
+	if got != "/configured/ssh" {
+		t.Errorf("got %q, want /configured/ssh", got)
+	}
+}
+
+func TestResolveSSHBinary_NilConfig(t *testing.T) {
+	t.Setenv("SSHROUTE_SSH", "")
+	got := ResolveSSHBinary(nil)
+	if got == "" {
+		t.Error("expected non-empty SSH binary path")
+	}
+}
+
+func TestResolveSSHBinary_EmptyConfig(t *testing.T) {
+	t.Setenv("SSHROUTE_SSH", "")
+	got := ResolveSSHBinary(&config.Config{})
+	if got == "" {
+		t.Error("expected non-empty SSH binary path")
+	}
+}
+
+func TestSameFile_Equal(t *testing.T) {
+	f, err := os.CreateTemp("", "sshroute-same-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(f.Name())
+	f.Close()
+	if !sameFile(f.Name(), f.Name()) {
+		t.Error("expected same file to return true")
+	}
+}
+
+func TestSameFile_Different(t *testing.T) {
+	a, err := os.CreateTemp("", "sshroute-a-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(a.Name())
+	a.Close()
+
+	b, err := os.CreateTemp("", "sshroute-b-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(b.Name())
+	b.Close()
+
+	if sameFile(a.Name(), b.Name()) {
+		t.Error("expected different files to return false")
+	}
+}
+
+func TestSameFile_NonExistentA(t *testing.T) {
+	if sameFile("/nonexistent/sshroute-test-a", "/etc/hosts") {
+		t.Error("expected false when first path does not exist")
+	}
+}
+
+func TestSameFile_NonExistentB(t *testing.T) {
+	if sameFile("/etc/hosts", "/nonexistent/sshroute-test-b") {
+		t.Error("expected false when second path does not exist")
+	}
+}
+
 func TestBuildArgv_PortFormatting(t *testing.T) {
 	// Ensure port is formatted as decimal string, not e.g. hex.
 	from := config.SSHParams{Host: "h", Port: 65535}
