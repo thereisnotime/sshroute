@@ -97,21 +97,18 @@ jobs:
 
       - name: Run govulncheck
         run: |
-          set +e
-          govulncheck ./... 2>&1 | tee /tmp/vuln.txt
-          EXIT=${PIPESTATUS[0]}
-          set -e
-          if [ "$EXIT" -eq 3 ]; then
+          govulncheck ./... > /tmp/vuln.txt 2>&1 || EXIT=$?
+          cat /tmp/vuln.txt
+          if [ "${EXIT:-0}" -eq 3 ]; then
             UNACCEPTED=$(grep "^Vulnerability #" /tmp/vuln.txt | grep -v "GO-2026-4971" || true)
             if [ -n "$UNACCEPTED" ]; then
-              echo "Unaccepted vulnerabilities found:"
-              echo "$UNACCEPTED"
+              echo "Unaccepted vulnerabilities found"
               exit 1
             fi
             echo "Accepted: GO-2026-4971 is a Windows-only stdlib CVE, not applicable to linux/darwin/android targets"
             exit 0
           fi
-          exit "$EXIT"
+          exit "${EXIT:-0}"
 
       - name: Run Trivy (filesystem scan)
         if: always()
