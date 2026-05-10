@@ -46,7 +46,7 @@ func sameFile(a, b string) bool {
 	if err != nil {
 		return false
 	}
-	bi, err := os.Stat(b)
+	bi, err := os.Stat(b) // #nosec G703 -- b is always os.Args[0] (our own binary path), not user-controlled input
 	if err != nil {
 		return false
 	}
