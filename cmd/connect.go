@@ -26,6 +26,7 @@ func runConnect(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}
+	ssh.RealSSH = ssh.ResolveSSHBinary(cfg)
 
 	if _, ok := cfg.Hosts[alias]; !ok {
 		return fmt.Errorf("host %q not found in config", alias)

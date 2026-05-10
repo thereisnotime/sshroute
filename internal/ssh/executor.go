@@ -19,9 +19,39 @@ import (
 // remote-command exits or auth failures.
 const SSHConnectFailure = 255
 
-// RealSSH is the absolute path to the system SSH binary.
-// Using absolute path prevents infinite recursion in shadow/transparent mode.
-const RealSSH = "/usr/bin/ssh"
+// RealSSH is the path to the system SSH binary used for all exec/run calls.
+// It defaults to /usr/bin/ssh but is overridden at startup by ResolveSSHBinary.
+var RealSSH = "/usr/bin/ssh"
+
+// ResolveSSHBinary returns the path to the real ssh binary using the following priority:
+//  1. SSHROUTE_SSH environment variable
+//  2. cfg.SSHBinary (from config file field ssh_binary)
+//  3. exec.LookPath("ssh"), skipping sshroute's own binary to prevent infinite recursion
+//  4. /usr/bin/ssh as last resort
+func ResolveSSHBinary(cfg *config.Config) string {
+	if v := os.Getenv("SSHROUTE_SSH"); v != "" {
+		return v
+	}
+	if cfg != nil && cfg.SSHBinary != "" {
+		return cfg.SSHBinary
+	}
+	if path, err := exec.LookPath("ssh"); err == nil && !sameFile(path, os.Args[0]) {
+		return path
+	}
+	return "/usr/bin/ssh"
+}
+
+func sameFile(a, b string) bool {
+	ai, err := os.Stat(a)
+	if err != nil {
+		return false
+	}
+	bi, err := os.Stat(b)
+	if err != nil {
+		return false
+	}
+	return os.SameFile(ai, bi)
+}
 
 // expandTilde replaces a leading ~ with the current user's home directory.
 func expandTilde(path string) string {
@@ -104,7 +134,7 @@ func buildProxyCommand(jump *config.SSHParams) string {
 // Exec replaces the current process with ssh using the given argv.
 // On success this function never returns; the current process is replaced entirely.
 func Exec(argv []string) error {
-	if err := syscall.Exec(RealSSH, argv, os.Environ()); err != nil { // #nosec G204 -- RealSSH is a compile-time constant (/usr/bin/ssh)
+	if err := syscall.Exec(RealSSH, argv, os.Environ()); err != nil { // #nosec G204 -- RealSSH is resolved from trusted sources: env var, config, or LookPath
 		return fmt.Errorf("exec %s: %w", RealSSH, err)
 	}
 	// Unreachable — syscall.Exec replaces the process image.
@@ -114,7 +144,7 @@ func Exec(argv []string) error {
 // Run executes ssh as a subprocess (keeping sshroute alive) and returns its exit code.
 // stdin/stdout/stderr are inherited from the parent. Use this for fallback retry logic.
 func Run(argv []string) (int, error) {
-	cmd := exec.Command(argv[0], argv[1:]...) // #nosec G204 -- argv[0] is always RealSSH, a compile-time constant
+	cmd := exec.Command(argv[0], argv[1:]...) // #nosec G204 -- argv[0] is RealSSH, resolved from trusted sources
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

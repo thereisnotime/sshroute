@@ -77,6 +77,7 @@ func runShadowMode() {
 		passthrough()
 		return
 	}
+	ssh.RealSSH = ssh.ResolveSSHBinary(cfg)
 
 	// 2. Parse os.Args[1:] to extract alias and remaining flags.
 	parsed := ssh.ParseArgs(os.Args[1:])

@@ -48,6 +48,7 @@ type NetworkDefinition struct {
 
 // Config is the top-level sshroute configuration structure.
 type Config struct {
-	Networks map[string]NetworkDefinition `yaml:"networks"`
-	Hosts    map[string]HostConfig        `yaml:"hosts"`
+	Networks  map[string]NetworkDefinition `yaml:"networks"`
+	Hosts     map[string]HostConfig        `yaml:"hosts"`
+	SSHBinary string                       `yaml:"ssh_binary,omitempty"`
 }
