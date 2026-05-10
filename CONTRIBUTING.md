@@ -12,7 +12,23 @@ just build   # outputs bin/sshroute
 just test    # run tests with race detector
 ```
 
-Requirements: [Go 1.22+](https://go.dev/dl/), [just](https://just.systems/).
+Requirements: [Go 1.22+](https://go.dev/dl/), [just](https://just.systems/), [pre-commit](https://pre-commit.com/#install).
+
+After cloning, install the git hooks:
+
+```sh
+pre-commit install --hook-type commit-msg
+```
+
+This enforces [Conventional Commits](https://www.conventionalcommits.org/) on every commit. Commit messages must follow:
+
+```
+<type>[optional scope]: <description>
+
+Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
+```
+
+Conventional commits map directly to semver: `fix:` → patch, `feat:` → minor, `feat!:` / `BREAKING CHANGE:` → major.
 
 ## Making changes
 
