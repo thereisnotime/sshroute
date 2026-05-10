@@ -45,6 +45,12 @@ sshroute lets you define the routing logic declaratively, keep it in a versioned
 
 Download the latest release from [GitHub Releases](https://github.com/thereisnotime/sshroute/releases). Binaries are available for Linux, macOS, and Android on AMD64 and ARM64.
 
+### Go install
+
+```sh
+go install github.com/thereisnotime/sshroute@latest
+```
+
 ### Android (Termux)
 
 Download the `android_arm64` tarball from [GitHub Releases](https://github.com/thereisnotime/sshroute/releases), extract, and place the binary in `~/.local/bin`:
@@ -78,12 +84,6 @@ ssh_binary: /data/data/com.termux/files/usr/bin/ssh
 ```
 
 Or via environment variable: `export SSHROUTE_SSH=$(which ssh)`
-
-### Go install
-
-```sh
-go install github.com/thereisnotime/sshroute@latest
-```
 
 ### Docker
 
