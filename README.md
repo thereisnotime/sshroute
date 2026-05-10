@@ -47,13 +47,21 @@ Download the latest release from [GitHub Releases](https://github.com/thereisnot
 
 ### Android (Termux)
 
-Download the `android_arm64` tarball from [GitHub Releases](https://github.com/thereisnotime/sshroute/releases), extract, and place the binary in Termux's bin directory:
+Download the `android_arm64` tarball from [GitHub Releases](https://github.com/thereisnotime/sshroute/releases), extract, and place the binary in `~/.local/bin`:
 
 ```sh
+mkdir -p ~/.local/bin
 curl -Lo /tmp/sshroute.tar.gz \
   https://github.com/thereisnotime/sshroute/releases/latest/download/sshroute_android_arm64.tar.gz
-tar -xzf /tmp/sshroute.tar.gz -C $PREFIX/bin sshroute
-chmod +x $PREFIX/bin/sshroute
+tar -xzf /tmp/sshroute.tar.gz -C ~/.local/bin sshroute
+chmod +x ~/.local/bin/sshroute
+```
+
+Add `~/.local/bin` to your `PATH` in `~/.bashrc` or `~/.profile` if it isn't already:
+
+```sh
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 Alternatively, compile from source with Termux's Go. Because the official Go toolchain doesn't publish android/arm64 binaries, set `GOTOOLCHAIN=local` to use what Termux ships:
