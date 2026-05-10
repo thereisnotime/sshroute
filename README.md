@@ -57,9 +57,9 @@ Download the `android_arm64` tarball from [GitHub Releases](https://github.com/t
 
 ```sh
 mkdir -p ~/.local/bin
-curl -Lo /tmp/sshroute.tar.gz \
+curl -Lo "$TMPDIR/sshroute.tar.gz" \
   https://github.com/thereisnotime/sshroute/releases/latest/download/sshroute_android_arm64.tar.gz
-tar -xzf /tmp/sshroute.tar.gz -C ~/.local/bin sshroute
+tar -xzf "$TMPDIR/sshroute.tar.gz" -C ~/.local/bin sshroute
 chmod +x ~/.local/bin/sshroute
 ```
 
