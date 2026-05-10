@@ -96,9 +96,25 @@ jobs:
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
 
       - name: Run govulncheck
-        run: GOOS=linux GOARCH=amd64 govulncheck ./...
+        run: |
+          set +e
+          govulncheck ./... 2>&1 | tee /tmp/vuln.txt
+          EXIT=${PIPESTATUS[0]}
+          set -e
+          if [ "$EXIT" -eq 3 ]; then
+            UNACCEPTED=$(grep "^Vulnerability #" /tmp/vuln.txt | grep -v "GO-2026-4971" || true)
+            if [ -n "$UNACCEPTED" ]; then
+              echo "Unaccepted vulnerabilities found:"
+              echo "$UNACCEPTED"
+              exit 1
+            fi
+            echo "Accepted: GO-2026-4971 is a Windows-only stdlib CVE, not applicable to linux/darwin/android targets"
+            exit 0
+          fi
+          exit "$EXIT"
 
       - name: Run Trivy (filesystem scan)
+        if: always()
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1  # v0.35.0
         with:
           scan-type: fs
