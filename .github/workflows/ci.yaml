@@ -96,7 +96,7 @@ jobs:
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
 
       - name: Run govulncheck
-        run: govulncheck ./...
+        run: GOOS=linux GOARCH=amd64 govulncheck ./...
 
       - name: Run Trivy (filesystem scan)
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1  # v0.35.0

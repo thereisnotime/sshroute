@@ -6,8 +6,13 @@ before:
 builds:
   - env:
       - CGO_ENABLED=0
-    goos: [linux, darwin, windows]
+    goos: [linux, darwin, windows, android]
     goarch: [amd64, arm64]
+    ignore:
+      - goos: android
+        goarch: amd64
+      - goos: windows
+        goarch: arm64
     ldflags:
       - -s -w
       - -X github.com/thereisnotime/sshroute/internal/version.Version={{.Version}}
