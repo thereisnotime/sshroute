@@ -9,6 +9,10 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/thereisnotime/sshroute/badge)](https://scorecard.dev/viewer/?uri=github.com/thereisnotime/sshroute)
 [![CII Best Practices](https://www.bestpractices.dev/projects/12389/badge)](https://www.bestpractices.dev/projects/12389)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Specs](https://raw.githubusercontent.com/thereisnotime/sshroute/gh-pages/badges/number_of_specs.svg)](openspec/specs/)
+[![Requirements](https://raw.githubusercontent.com/thereisnotime/sshroute/gh-pages/badges/number_of_requirements.svg)](openspec/specs/)
+[![Tasks](https://raw.githubusercontent.com/thereisnotime/sshroute/gh-pages/badges/tasks_status.svg)](openspec/changes/)
+[![Open Changes](https://raw.githubusercontent.com/thereisnotime/sshroute/gh-pages/badges/open_changes.svg)](openspec/changes/)
 
 Network-aware SSH router. Detects your active network or VPN and automatically selects the right host, port, identity file, and jump host for each SSH connection — without touching `~/.ssh/config`.
 
