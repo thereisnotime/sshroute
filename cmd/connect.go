@@ -13,10 +13,11 @@ import (
 var fallback bool
 
 var connectCmd = &cobra.Command{
-	Use:   "connect <host>",
-	Short: "Connect to a configured host using the active network profile",
-	Args:  cobra.MinimumNArgs(1),
-	RunE:  runConnect,
+	Use:               "connect <host>",
+	Short:             "Connect to a configured host using the active network profile",
+	Args:              cobra.MinimumNArgs(1),
+	RunE:              runConnect,
+	ValidArgsFunction: completeAliases,
 }
 
 func runConnect(cmd *cobra.Command, args []string) error {

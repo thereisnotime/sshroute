@@ -8,11 +8,12 @@ import (
 )
 
 var removeCmd = &cobra.Command{
-	Use:     "remove <alias>",
-	Aliases: []string{"rm", "delete"},
-	Short:   "Remove a host from the config",
-	Args:    cobra.ExactArgs(1),
-	RunE:    runRemove,
+	Use:               "remove <alias>",
+	Aliases:           []string{"rm", "delete"},
+	Short:             "Remove a host from the config",
+	Args:              cobra.ExactArgs(1),
+	RunE:              runRemove,
+	ValidArgsFunction: completeAliases,
 }
 
 func runRemove(cmd *cobra.Command, args []string) error {
