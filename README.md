@@ -203,6 +203,25 @@ Print the resolved path to the config file.
 
 Open the config file in `$EDITOR` (falls back to `nano`). Creates the file and its parent directory if they do not exist.
 
+### `resolve <alias>`
+
+Print the SSH parameters that would be used for `alias` on the current network. Useful for debugging and scripting. Use `--network <name>` to override the detected network. Supports `-o table|json|yaml`.
+
+| Flag | Default | Description |
+|---|---|---|
+| `--network` | auto-detect | Network profile to resolve against |
+
+### `copy <alias> <src> <dst>`
+
+Copy files to or from a configured host using `scp` with the same resolved parameters (key, port, jump) as `connect`. Use `<alias>:<path>` syntax for remote paths:
+
+```sh
+sshroute copy myserver ./local.txt myserver:/remote/path/
+sshroute copy myserver myserver:/remote/file.txt ./local/
+```
+
+The `SSHROUTE_SCP` environment variable overrides the `scp` binary used.
+
 ### `version`
 
 Print the version, git commit, build date, and Go runtime info.
@@ -261,7 +280,7 @@ Multiple checks within one network definition use **AND** logic — all must pas
 
 ## Examples
 
-See the [`examples/`](examples/) directory for ready-to-use configs:
+Ready-to-use config files are in [`examples/`](examples/):
 
 | File | Use case |
 |---|---|
@@ -270,33 +289,17 @@ See the [`examples/`](examples/) directory for ready-to-use configs:
 | [`wireguard-backconnect.yaml`](examples/wireguard-backconnect.yaml) | WireGuard peer that backconnects to you |
 | [`jump-hosts.yaml`](examples/jump-hosts.yaml) | Different bastions per network |
 
-### WireGuard backconnect
+## Documentation
 
-A common pattern: a remote machine tunnels back to you over WireGuard. Its peer IP falls outside your normal subnet CIDR. Use a route check combined with a ping to verify it's actually up before trying to connect directly:
+In-depth guides are in [`docs/`](docs/):
 
-```yaml
-networks:
-  wg-peer:
-    priority: 10
-    checks:
-      - type: route
-        match: "10.100.200.5"    # route must exist
-      - type: ping
-        host: "10.100.200.5"     # AND peer must respond
-        timeout: 2s
-
-hosts:
-  remote-machine:
-    default:
-      host: remote-machine.example.com
-      port: 22
-      user: admin
-      key: ~/.ssh/id_ed25519
-    wg-peer:
-      host: 10.100.200.5         # connect directly when peer is up
-      user: admin
-      key: ~/.ssh/wg_key
-```
+| Guide | Description |
+|---|---|
+| [Homelab setup](docs/homelab.md) | Multi-zone homelab with WireGuard, jump hosts, NAS, k3s nodes |
+| [Corporate / multi-environment](docs/corporate.md) | Dev/staging/prod with per-environment bastions and VPN detection |
+| [Shadow mode](docs/shadow-mode.md) | Transparent SSH replacement — git, rsync, scp, Ansible |
+| [Shell completion](docs/shell-completion.md) | Dynamic alias completion for bash, zsh, fish |
+| [Scripting and automation](docs/scripting.md) | Using `resolve` and `copy` in scripts and CI pipelines |
 
 ## Output formats
 
