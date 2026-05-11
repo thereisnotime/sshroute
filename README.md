@@ -1,27 +1,38 @@
 # sshroute
 
-<!-- CI & Release -->
-[![CI](https://github.com/thereisnotime/sshroute/actions/workflows/ci.yaml/badge.svg)](https://github.com/thereisnotime/sshroute/actions/workflows/ci.yaml)
-[![Release](https://github.com/thereisnotime/sshroute/actions/workflows/release.yaml/badge.svg)](https://github.com/thereisnotime/sshroute/actions/workflows/release.yaml)
-[![OpenSpec Badge](https://github.com/thereisnotime/sshroute/actions/workflows/openspec-badge.yaml/badge.svg)](https://github.com/thereisnotime/sshroute/actions/workflows/openspec-badge.yaml)
-[![Scorecard](https://github.com/thereisnotime/sshroute/actions/workflows/scorecard.yaml/badge.svg)](https://github.com/thereisnotime/sshroute/actions/workflows/scorecard.yaml)
-[![Latest Release](https://img.shields.io/github/v/release/thereisnotime/sshroute)](https://github.com/thereisnotime/sshroute/releases/latest)
-
-<!-- Code Quality -->
-[![codecov](https://codecov.io/gh/thereisnotime/sshroute/branch/main/graph/badge.svg)](https://codecov.io/gh/thereisnotime/sshroute)
-[![Go Report Card](https://goreportcard.com/badge/github.com/thereisnotime/sshroute)](https://goreportcard.com/report/github.com/thereisnotime/sshroute)
-[![Go Reference](https://pkg.go.dev/badge/github.com/thereisnotime/sshroute.svg)](https://pkg.go.dev/github.com/thereisnotime/sshroute)
-
-<!-- Security & Compliance -->
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/thereisnotime/sshroute/badge)](https://scorecard.dev/viewer/?uri=github.com/thereisnotime/sshroute)
-[![CII Best Practices](https://www.bestpractices.dev/projects/12389/badge)](https://www.bestpractices.dev/projects/12389)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-
-<!-- Spec -->
-[![Specs](https://raw.githubusercontent.com/thereisnotime/sshroute/gh-pages/badges/number_of_specs.svg)](openspec/specs/)
-[![Requirements](https://raw.githubusercontent.com/thereisnotime/sshroute/gh-pages/badges/number_of_requirements.svg)](openspec/specs/)
-[![Tasks](https://raw.githubusercontent.com/thereisnotime/sshroute/gh-pages/badges/tasks_status.svg)](openspec/changes/)
-[![Open Changes](https://raw.githubusercontent.com/thereisnotime/sshroute/gh-pages/badges/open_changes.svg)](openspec/changes/)
+<table>
+  <tr>
+    <th>CI</th>
+    <th>Code</th>
+    <th>OpenSpec</th>
+    <th>Security</th>
+  </tr>
+  <tr>
+    <td>
+      <a href="https://github.com/thereisnotime/sshroute/actions/workflows/ci.yaml"><img src="https://github.com/thereisnotime/sshroute/actions/workflows/ci.yaml/badge.svg" alt="CI"></a><br>
+      <a href="https://github.com/thereisnotime/sshroute/actions/workflows/release.yaml"><img src="https://github.com/thereisnotime/sshroute/actions/workflows/release.yaml/badge.svg" alt="Release"></a><br>
+      <a href="https://github.com/thereisnotime/sshroute/actions/workflows/openspec-badge.yaml"><img src="https://github.com/thereisnotime/sshroute/actions/workflows/openspec-badge.yaml/badge.svg" alt="OpenSpec Badge"></a><br>
+      <a href="https://github.com/thereisnotime/sshroute/actions/workflows/scorecard.yaml"><img src="https://github.com/thereisnotime/sshroute/actions/workflows/scorecard.yaml/badge.svg" alt="Scorecard"></a>
+    </td>
+    <td>
+      <a href="https://github.com/thereisnotime/sshroute/releases/latest"><img src="https://img.shields.io/github/v/release/thereisnotime/sshroute" alt="Latest Release"></a><br>
+      <a href="https://codecov.io/gh/thereisnotime/sshroute"><img src="https://codecov.io/gh/thereisnotime/sshroute/branch/main/graph/badge.svg" alt="codecov"></a><br>
+      <a href="https://goreportcard.com/report/github.com/thereisnotime/sshroute"><img src="https://goreportcard.com/badge/github.com/thereisnotime/sshroute" alt="Go Report Card"></a><br>
+      <a href="https://pkg.go.dev/github.com/thereisnotime/sshroute"><img src="https://pkg.go.dev/badge/github.com/thereisnotime/sshroute.svg" alt="Go Reference"></a>
+    </td>
+    <td>
+      <a href="openspec/specs/"><img src="https://raw.githubusercontent.com/thereisnotime/sshroute/gh-pages/badges/number_of_specs.svg" alt="Specs"></a><br>
+      <a href="openspec/specs/"><img src="https://raw.githubusercontent.com/thereisnotime/sshroute/gh-pages/badges/number_of_requirements.svg" alt="Requirements"></a><br>
+      <a href="openspec/changes/"><img src="https://raw.githubusercontent.com/thereisnotime/sshroute/gh-pages/badges/tasks_status.svg" alt="Tasks"></a><br>
+      <a href="openspec/changes/"><img src="https://raw.githubusercontent.com/thereisnotime/sshroute/gh-pages/badges/open_changes.svg" alt="Open Changes"></a>
+    </td>
+    <td>
+      <a href="https://scorecard.dev/viewer/?uri=github.com/thereisnotime/sshroute"><img src="https://api.scorecard.dev/projects/github.com/thereisnotime/sshroute/badge" alt="OpenSSF Scorecard"></a><br>
+      <a href="https://www.bestpractices.dev/projects/12389"><img src="https://www.bestpractices.dev/projects/12389/badge" alt="CII Best Practices"></a><br>
+      <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License: Apache 2.0"></a>
+    </td>
+  </tr>
+</table>
 
 Network-aware SSH router. Detects your active network or VPN and automatically selects the right host, port, identity file, and jump host for each SSH connection — without touching `~/.ssh/config`.
 
