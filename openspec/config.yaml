@@ -1,0 +1,22 @@
+schema: spec-driven
+
+context: |
+  sshroute is a network-aware SSH router written in Go.
+  It detects the active network (VPN, LAN, WireGuard, etc.) and automatically
+  selects the correct SSH parameters (host, port, user, key, jump host) for each
+  configured alias before handing off to the real SSH binary.
+  Tech stack: Go, Cobra CLI, gopkg.in/yaml.v3, golang.org/x/net (ICMP ping).
+  Distribution: GitHub Releases (GoReleaser), Docker/Podman images, go install.
+
+rules:
+  specs:
+    - Requirements use SHALL language (RFC 2119)
+    - Every requirement must have at least one Scenario
+    - Scenarios describe observable behaviour, not implementation details
+  design:
+    - Separate cmd/ (Cobra layer) from internal/ (business logic) — no Cobra imports in internal/
+    - Use syscall.Exec for connect so sshroute is not visible in the process tree
+    - Use exec.Command for copy (scp) since file transfer does not need signal transparency
+  tasks:
+    - Tasks map 1:1 to files or discrete behaviours, not broad phases
+    - Mark tasks complete as soon as the code ships, not when the PR merges
