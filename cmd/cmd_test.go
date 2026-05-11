@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/thereisnotime/sshroute/internal/config"
 )
 
@@ -1064,6 +1065,205 @@ func TestRunConnect_ResolveError(t *testing.T) {
 	err := runConnect(connectCmd, []string{"a"})
 	if err == nil || !strings.Contains(err.Error(), "resolving params") {
 		t.Errorf("expected 'resolving params' error, got %v", err)
+	}
+}
+
+// resolve command tests
+
+func TestRunResolve_UnknownHost(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts:    make(map[string]config.HostConfig),
+	})
+	err := runResolve(resolveCmd, []string{"doesnotexist"})
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Errorf("expected 'not found' error, got %v", err)
+	}
+}
+
+func TestRunResolve_LoadConfigError(t *testing.T) {
+	withInvalidConfig(t)
+	err := runResolve(resolveCmd, []string{"anyhost"})
+	if err == nil || !strings.Contains(err.Error(), "loading config") {
+		t.Errorf("expected 'loading config' error, got %v", err)
+	}
+}
+
+func TestRunResolve_DefaultNetwork(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"srv": {"default": {Host: "1.2.3.4", Port: 22, User: "alice"}},
+		},
+	})
+	old := output
+	output = "json"
+	defer func() { output = old }()
+
+	if err := runResolve(resolveCmd, []string{"srv"}); err != nil {
+		t.Fatalf("runResolve error: %v", err)
+	}
+}
+
+func TestRunResolve_ExplicitNetwork(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"srv": {
+				"default": {Host: "1.2.3.4", Port: 22},
+				"vpn":     {Host: "10.0.0.1", Port: 2222},
+			},
+		},
+	})
+	resolveNetwork = "vpn"
+	defer func() { resolveNetwork = "" }()
+
+	old := output
+	output = "json"
+	defer func() { output = old }()
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	if err := runResolve(resolveCmd, []string{"srv"}); err != nil {
+		t.Fatalf("runResolve error: %v", err)
+	}
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+	if !strings.Contains(buf.String(), "10.0.0.1") {
+		t.Errorf("expected vpn host in output, got: %s", buf.String())
+	}
+}
+
+// copy command tests
+
+func TestBuildSCPArgv_Basic(t *testing.T) {
+	params := config.SSHParams{Host: "1.2.3.4", Port: 22, User: "alice", Key: "~/.ssh/id_rsa"}
+	argv := buildSCPArgv("/usr/bin/scp", params, "srv:remote.txt", "./local.txt", "srv")
+	joined := strings.Join(argv, " ")
+	if !strings.Contains(joined, "-P 22") {
+		t.Errorf("expected -P 22, got: %s", joined)
+	}
+	if !strings.Contains(joined, "-i") {
+		t.Errorf("expected -i key, got: %s", joined)
+	}
+	if !strings.Contains(joined, "alice@1.2.3.4:remote.txt") {
+		t.Errorf("expected rewritten remote, got: %s", joined)
+	}
+}
+
+func TestBuildSCPArgv_NoPort(t *testing.T) {
+	params := config.SSHParams{Host: "1.2.3.4"}
+	argv := buildSCPArgv("/usr/bin/scp", params, "./local.txt", "srv:/dst", "srv")
+	joined := strings.Join(argv, " ")
+	if strings.Contains(joined, "-P") {
+		t.Errorf("expected no -P flag when port is 0, got: %s", joined)
+	}
+}
+
+func TestBuildSCPArgv_WithJump(t *testing.T) {
+	params := config.SSHParams{Host: "1.2.3.4", Jump: "bastion.example.com"}
+	argv := buildSCPArgv("/usr/bin/scp", params, "./local.txt", "srv:/dst", "srv")
+	joined := strings.Join(argv, " ")
+	if !strings.Contains(joined, "-J bastion.example.com") {
+		t.Errorf("expected -J jump, got: %s", joined)
+	}
+}
+
+func TestRewriteRemote_AliasPrefix(t *testing.T) {
+	got := rewriteRemote("myserver:/path/to/file", "myserver", "alice@1.2.3.4")
+	want := "alice@1.2.3.4:/path/to/file"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestRewriteRemote_LocalPath(t *testing.T) {
+	got := rewriteRemote("./local/file.txt", "myserver", "alice@1.2.3.4")
+	if got != "./local/file.txt" {
+		t.Errorf("local path should be unchanged, got %q", got)
+	}
+}
+
+func TestResolveSCPBinary_EnvVar(t *testing.T) {
+	t.Setenv("SSHROUTE_SCP", "/custom/scp")
+	got := resolveSCPBinary()
+	if got != "/custom/scp" {
+		t.Errorf("got %q, want /custom/scp", got)
+	}
+}
+
+func TestResolveSCPBinary_Default(t *testing.T) {
+	t.Setenv("SSHROUTE_SCP", "")
+	got := resolveSCPBinary()
+	if got == "" {
+		t.Error("expected non-empty scp binary path")
+	}
+}
+
+func TestRunCopy_UnknownHost(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts:    make(map[string]config.HostConfig),
+	})
+	err := runCopy(copyCmd, []string{"doesnotexist", "./local.txt", "doesnotexist:/remote"})
+	if err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Errorf("expected 'not found' error, got %v", err)
+	}
+}
+
+func TestRunCopy_LoadConfigError(t *testing.T) {
+	withInvalidConfig(t)
+	err := runCopy(copyCmd, []string{"srv", "./local.txt", "srv:/remote"})
+	if err == nil || !strings.Contains(err.Error(), "loading config") {
+		t.Errorf("expected 'loading config' error, got %v", err)
+	}
+}
+
+func TestRunCopy_DryRun(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"srv": {"default": {Host: "1.2.3.4", Port: 22, User: "alice"}},
+		},
+	})
+	dryRun = true
+	defer func() { dryRun = false }()
+
+	if err := runCopy(copyCmd, []string{"srv", "./local.txt", "srv:/remote/path"}); err != nil {
+		t.Fatalf("runCopy dry-run error: %v", err)
+	}
+}
+
+// completion tests
+
+func TestCompleteAliases_ReturnsAliases(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"alpha": {"default": {Host: "1.2.3.4"}},
+			"beta":  {"default": {Host: "5.6.7.8"}},
+		},
+	})
+	got, directive := completeAliases(connectCmd, nil, "")
+	if directive != cobra.ShellCompDirectiveNoFileComp {
+		t.Errorf("unexpected directive: %v", directive)
+	}
+	if len(got) != 2 {
+		t.Errorf("expected 2 aliases, got %d: %v", len(got), got)
+	}
+}
+
+func TestCompleteAliases_AlreadyHasArg(t *testing.T) {
+	got, directive := completeAliases(connectCmd, []string{"srv"}, "")
+	if got != nil {
+		t.Errorf("expected nil completions after first arg, got %v", got)
+	}
+	if directive != cobra.ShellCompDirectiveNoFileComp {
+		t.Errorf("unexpected directive: %v", directive)
 	}
 }
 
