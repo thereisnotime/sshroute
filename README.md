@@ -3,6 +3,8 @@
 <!-- CI & Release -->
 [![CI](https://github.com/thereisnotime/sshroute/actions/workflows/ci.yaml/badge.svg)](https://github.com/thereisnotime/sshroute/actions/workflows/ci.yaml)
 [![Release](https://github.com/thereisnotime/sshroute/actions/workflows/release.yaml/badge.svg)](https://github.com/thereisnotime/sshroute/actions/workflows/release.yaml)
+[![OpenSpec Badge](https://github.com/thereisnotime/sshroute/actions/workflows/openspec-badge.yaml/badge.svg)](https://github.com/thereisnotime/sshroute/actions/workflows/openspec-badge.yaml)
+[![Scorecard](https://github.com/thereisnotime/sshroute/actions/workflows/scorecard.yaml/badge.svg)](https://github.com/thereisnotime/sshroute/actions/workflows/scorecard.yaml)
 [![Latest Release](https://img.shields.io/github/v/release/thereisnotime/sshroute)](https://github.com/thereisnotime/sshroute/releases/latest)
 
 <!-- Code Quality -->
