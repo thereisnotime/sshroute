@@ -312,6 +312,7 @@ Ready-to-use config files are in [`examples/`](examples/):
 | [`multi-network.yaml`](examples/multi-network.yaml) | Office LAN, corp VPN, remote VPN, public |
 | [`wireguard-backconnect.yaml`](examples/wireguard-backconnect.yaml) | WireGuard peer that backconnects to you |
 | [`jump-hosts.yaml`](examples/jump-hosts.yaml) | Different bastions per network |
+| [`multi-zone-roaming.yaml`](examples/multi-zone-roaming.yaml) | Multi-zone homelab with WireGuard gateway and roaming mobile devices |
 
 ## Documentation
 
@@ -320,6 +321,7 @@ In-depth guides are in [`docs/`](docs/):
 | Guide | Description |
 |---|---|
 | [Homelab setup](docs/homelab.md) | Multi-zone homelab with WireGuard, jump hosts, NAS, k3s nodes |
+| [Multi-zone roaming](docs/multi-zone-roaming.md) | Multiple LANs, WireGuard gateway, mobile devices that roam between networks |
 | [Corporate / multi-environment](docs/corporate.md) | Dev/staging/prod with per-environment bastions and VPN detection |
 | [Shadow mode](docs/shadow-mode.md) | Transparent SSH replacement — git, rsync, scp, Ansible |
 | [Shell completion](docs/shell-completion.md) | Dynamic alias completion for bash, zsh, fish |

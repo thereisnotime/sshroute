@@ -1,0 +1,253 @@
+# Multi-zone homelab with roaming mobile devices.
+#
+# Topology:
+#   - zone-a: home LAN (192.168.10.x) — servers and desktops
+#   - zone-b: remote LAN (10.20.30.x) — behind the same gateway
+#   - gateway: zone-b host with a public SSH port (gateway.example.com:2222)
+#              and a WireGuard endpoint (172.16.0.1)
+#   - mobile devices roam between zone-a, zone-b, and the internet
+#
+# Network priority (lowest number = checked first = preferred):
+#   5   → zone-a LAN   (direct, lowest latency)
+#   10  → zone-b LAN   (direct, lowest latency for zone-b hosts)
+#   15  → wireguard    (one WG hop)
+#   25  → internet     (one SSH hop via gateway public port)
+#
+# Profile inheritance gotcha:
+#   sshroute merges named profiles ON TOP of default — only non-empty
+#   fields override. If default has jump: gateway, then zone-a and
+#   zone-b profiles silently inherit it too. Keep default jump-free
+#   and set jump explicitly in each profile that needs it.
+#
+# Fallback:
+#   All xxssh-* wrappers call `sshroute connect <host> --fallback`,
+#   which tries profiles in priority order on SSH connection failure.
+#   This means you get the best available path automatically.
+
+networks:
+    # Direct zone-a LAN — lowest latency for zone-a hosts
+    zone-a:
+        priority: 5
+        checks:
+            - type: exec
+              command: nc -z -w 2 192.168.10.40 22
+
+    # Direct zone-b LAN — lowest latency for zone-b hosts
+    zone-b:
+        priority: 10
+        checks:
+            - type: exec
+              command: nc -z -w 2 10.20.30.40 22
+
+    # WireGuard tunnel to gateway active
+    wireguard:
+        priority: 15
+        checks:
+            - type: exec
+              command: nc -z -w 2 172.16.0.1 22
+
+    # On internet, gateway public port reachable
+    internet:
+        priority: 25
+        checks:
+            - type: exec
+              command: nc -z -w 5 gateway.example.com 2222
+
+hosts:
+    # -------------------------------------------------------
+    # Gateway — zone-b host, public SSH on gateway.example.com:2222
+    # Entry point for all remote access.
+    # -------------------------------------------------------
+    gateway:
+        # Public internet (and last-resort default)
+        default:
+            host: gateway.example.com
+            port: 2222
+            user: admin
+            key: ~/.ssh/id_homelab.pem
+            comment: Gateway
+            tags: [gateway, zone-b]
+        # Via WireGuard (direct to WG peer IP)
+        wireguard:
+            host: 172.16.0.1
+            port: 22
+            user: admin
+            key: ~/.ssh/id_homelab.pem
+
+    # -------------------------------------------------------
+    # zone-a hosts (192.168.10.x)
+    # Direct on zone-a. All other paths jump via gateway.
+    # -------------------------------------------------------
+
+    # Workstation
+    workstation:
+        # Direct zone-a LAN (and last-resort default — no jump)
+        default:
+            host: 192.168.10.50
+            port: 22
+            user: admin
+            key: ~/.ssh/id_homelab.pem
+            comment: Workstation
+            tags: [zone-a, desktop]
+        zone-a:
+            host: 192.168.10.50
+            port: 22
+            user: admin
+            key: ~/.ssh/id_homelab.pem
+        # From zone-b / WG / internet — jump via gateway
+        zone-b:
+            host: 192.168.10.50
+            port: 22
+            user: admin
+            key: ~/.ssh/id_homelab.pem
+            jump: gateway
+        wireguard:
+            host: 192.168.10.50
+            port: 22
+            user: admin
+            key: ~/.ssh/id_homelab.pem
+            jump: gateway
+        internet:
+            host: 192.168.10.50
+            port: 22
+            user: admin
+            key: ~/.ssh/id_homelab.pem
+            jump: gateway
+
+    # Server / k3s node
+    server1:
+        default:
+            host: 192.168.10.60
+            port: 22
+            user: root
+            key: ~/.ssh/id_homelab.pem
+            comment: Server 1
+            tags: [zone-a, server]
+        zone-a:
+            host: 192.168.10.60
+            port: 22
+            user: root
+            key: ~/.ssh/id_homelab.pem
+        zone-b:
+            host: 192.168.10.60
+            port: 22
+            user: root
+            key: ~/.ssh/id_homelab.pem
+            jump: gateway
+        wireguard:
+            host: 192.168.10.60
+            port: 22
+            user: root
+            key: ~/.ssh/id_homelab.pem
+            jump: gateway
+        internet:
+            host: 192.168.10.60
+            port: 22
+            user: root
+            key: ~/.ssh/id_homelab.pem
+            jump: gateway
+
+    # -------------------------------------------------------
+    # Mobile devices — roam between zone-a, zone-b, internet
+    # Priority: zone-a direct > zone-b direct > WG (zone-b IP)
+    #           > internet (zone-b IP via gateway public)
+    #           > default (zone-a IP direct, last resort)
+    # -------------------------------------------------------
+
+    phone1:
+        # Last resort: direct zone-a attempt (no jump — see inheritance note above)
+        default:
+            host: 192.168.10.101
+            port: 8022
+            user: mobile
+            key: ~/.ssh/id_mobile.ed25519
+            comment: Phone 1 (Termux)
+            tags: [mobile, android, termux]
+        # Direct zone-a LAN
+        zone-a:
+            host: 192.168.10.101
+            port: 8022
+            user: mobile
+            key: ~/.ssh/id_mobile.ed25519
+        # Direct zone-b LAN (phone connected to zone-b WiFi)
+        zone-b:
+            host: 10.20.30.101
+            port: 8022
+            user: mobile
+            key: ~/.ssh/id_mobile.ed25519
+        # zone-b IP via gateway WireGuard
+        wireguard:
+            host: 10.20.30.101
+            port: 8022
+            user: mobile
+            key: ~/.ssh/id_mobile.ed25519
+            jump: gateway
+        # zone-b IP via gateway public port
+        internet:
+            host: 10.20.30.101
+            port: 8022
+            user: mobile
+            key: ~/.ssh/id_mobile.ed25519
+            jump: gateway
+
+    phone2:
+        default:
+            host: 192.168.10.102
+            port: 8022
+            user: mobile
+            key: ~/.ssh/id_mobile.ed25519
+            comment: Phone 2 (Termux)
+            tags: [mobile, android, termux]
+        zone-a:
+            host: 192.168.10.102
+            port: 8022
+            user: mobile
+            key: ~/.ssh/id_mobile.ed25519
+        zone-b:
+            host: 10.20.30.102
+            port: 8022
+            user: mobile
+            key: ~/.ssh/id_mobile.ed25519
+        wireguard:
+            host: 10.20.30.102
+            port: 8022
+            user: mobile
+            key: ~/.ssh/id_mobile.ed25519
+            jump: gateway
+        internet:
+            host: 10.20.30.102
+            port: 8022
+            user: mobile
+            key: ~/.ssh/id_mobile.ed25519
+            jump: gateway
+
+    # -------------------------------------------------------
+    # zone-b hosts (10.20.30.x)
+    # Direct on zone-b. All other paths jump via gateway.
+    # -------------------------------------------------------
+
+    nas:
+        default:
+            host: 10.20.30.40
+            port: 22
+            user: root
+            key: ~/.ssh/id_zone_b.ed25519
+            comment: NAS
+            tags: [zone-b, storage]
+        zone-b:
+            host: 10.20.30.40
+            port: 22
+            user: root
+            key: ~/.ssh/id_zone_b.ed25519
+        wireguard:
+            host: 10.20.30.40
+            port: 22
+            user: root
+            key: ~/.ssh/id_zone_b.ed25519
+            jump: gateway
+        internet:
+            host: 10.20.30.40
+            port: 22
+            user: root
+            key: ~/.ssh/id_zone_b.ed25519
+            jump: gateway
