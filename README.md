@@ -67,18 +67,18 @@ sshroute lets you define the routing logic declaratively, keep it in a versioned
 
 | Feature | `~/.ssh/config` | WireGuard-only | Teleport / Boundary | sshroute |
 |---|---|---|---|---|
-| Detects your current network | ✗ | ✗ | ✗ | ✓ |
-| Picks the best path automatically | ✗ | ✗ | ✗ | ✓ |
-| Falls back on connection failure | ✗ | ✗ | ✓ | ✓ |
-| One command per host, any location | ✗ | ✗ (VPN must be up) | ✓ | ✓ |
-| Config size for 10 hosts × 4 paths | ~600 lines | ~600 lines + VPN config | server-side config | ~60 lines |
-| Roaming mobile devices | manual aliases | VPN required | ✓ | ✓ |
-| Jump host auto-chaining | manual `-J` | n/a | ✓ | ✓ |
-| Works with scp / rsync / git / Ansible | ✓ | ✓ | partial | ✓ |
-| No server-side install on targets | ✓ | ✗ | ✗ | ✓ |
-| No auth server or daemon to run | ✓ | ✗ | ✗ | ✓ |
-| No client agent | ✓ | ✗ | ✗ | ✓ |
-| Open source, fully self-hosted | ✓ | ✓ | open-core | ✓ |
+| Detects your current network | ❌ | ❌ | ❌ | ✅ |
+| Picks the best path automatically | ❌ | ❌ | ❌ | ✅ |
+| Falls back on connection failure | ❌ | ❌ | ✅ | ✅ |
+| One command per host, any location | ❌ | ⚠️ VPN must be up | ✅ | ✅ |
+| Config size for 10 hosts × 4 paths | 📄 ~600 lines | 📄 ~600 lines + VPN config | 📄 server-side config | 📄 ~60 lines |
+| Roaming mobile devices | ⚠️ manual aliases | ⚠️ VPN required | ✅ | ✅ |
+| Jump host auto-chaining | ⚠️ manual `-J` | ➖ n/a | ✅ | ✅ |
+| Works with scp / rsync / git / Ansible | ✅ | ✅ | ⚠️ partial | ✅ |
+| No server-side install on targets | ✅ | ❌ | ❌ | ✅ |
+| No auth server or daemon to run | ✅ | ❌ | ❌ | ✅ |
+| No client agent | ✅ | ❌ | ❌ | ✅ |
+| Open source, fully self-hosted | ✅ | ✅ | ⚠️ open-core | ✅ |
 
 Teleport and Boundary are a different category — they add access control, audit logs, and certificate-based auth on top of routing. If that's what you need, use them. sshroute is for when you want the routing intelligence without the operational overhead of running a central auth server.
 
