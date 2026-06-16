@@ -5,7 +5,7 @@ go 1.26.2
 require (
 	github.com/jedib0t/go-pretty/v6 v6.8.1
 	github.com/spf13/cobra v1.10.2
-	golang.org/x/net v0.55.0
+	golang.org/x/net v0.56.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -14,6 +14,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
-	golang.org/x/sys v0.45.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/text v0.38.0 // indirect
 )
