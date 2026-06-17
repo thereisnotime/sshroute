@@ -193,7 +193,7 @@ func TestBuildArgv_Options(t *testing.T) {
 	params := config.SSHParams{
 		Host: "myhost",
 		Options: map[string]string{
-			"ConnectTimeout":    "10",
+			"ConnectTimeout":      "10",
 			"ServerAliveInterval": "30",
 		},
 	}
@@ -236,8 +236,8 @@ func TestBuildArgv_OptionsDeterministicOrder(t *testing.T) {
 	params := config.SSHParams{
 		Host: "myhost",
 		Options: map[string]string{
-			"ConnectTimeout":      "5",
-			"BatchMode":           "yes",
+			"ConnectTimeout":        "5",
+			"BatchMode":             "yes",
 			"StrictHostKeyChecking": "no",
 		},
 	}
