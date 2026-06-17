@@ -389,3 +389,56 @@ func TestRun(t *testing.T) {
 		}
 	})
 }
+
+func TestResolve_OptionsInheritedFromDefault(t *testing.T) {
+	cfg := makeConfig(map[string]config.HostConfig{
+		"srv": {
+			"default": {
+				Host:    "1.2.3.4",
+				Options: map[string]string{"ConnectTimeout": "10"},
+			},
+			"vpn": {Host: "10.0.0.1"},
+		},
+	})
+
+	params := mustResolve(t, cfg, "srv", "vpn")
+	if params.Options["ConnectTimeout"] != "10" {
+		t.Errorf("Options[ConnectTimeout] = %q, want %q", params.Options["ConnectTimeout"], "10")
+	}
+}
+
+func TestResolve_OptionsOverriddenByNetwork(t *testing.T) {
+	cfg := makeConfig(map[string]config.HostConfig{
+		"srv": {
+			"default": {
+				Host:    "1.2.3.4",
+				Options: map[string]string{"ConnectTimeout": "10", "BatchMode": "yes"},
+			},
+			"vpn": {
+				Host:    "10.0.0.1",
+				Options: map[string]string{"ConnectTimeout": "5"},
+			},
+		},
+	})
+
+	params := mustResolve(t, cfg, "srv", "vpn")
+	if params.Options["ConnectTimeout"] != "5" {
+		t.Errorf("Options[ConnectTimeout] = %q, want %q (network override)", params.Options["ConnectTimeout"], "5")
+	}
+	if params.Options["BatchMode"] != "yes" {
+		t.Errorf("Options[BatchMode] = %q, want %q (inherited from default)", params.Options["BatchMode"], "yes")
+	}
+}
+
+func TestResolve_OptionsNilWhenAbsent(t *testing.T) {
+	cfg := makeConfig(map[string]config.HostConfig{
+		"srv": {
+			"default": {Host: "1.2.3.4"},
+		},
+	})
+
+	params := mustResolve(t, cfg, "srv", "default")
+	if params.Options != nil {
+		t.Errorf("Options = %v, want nil when not configured", params.Options)
+	}
+}

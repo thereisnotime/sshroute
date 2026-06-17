@@ -188,3 +188,64 @@ func TestBuildArgv_PortFormatting(t *testing.T) {
 		t.Error("-p flag not found in argv")
 	}
 }
+
+func TestBuildArgv_Options(t *testing.T) {
+	params := config.SSHParams{
+		Host: "myhost",
+		Options: map[string]string{
+			"ConnectTimeout":    "10",
+			"ServerAliveInterval": "30",
+		},
+	}
+	got := BuildArgv(params, ParsedArgs{})
+
+	// Collect all -o values from argv.
+	var opts []string
+	for i, a := range got {
+		if a == "-o" && i+1 < len(got) {
+			opts = append(opts, got[i+1])
+		}
+	}
+
+	want := map[string]bool{
+		"ConnectTimeout=10":      true,
+		"ServerAliveInterval=30": true,
+	}
+	for _, o := range opts {
+		delete(want, o)
+	}
+	if len(want) > 0 {
+		t.Errorf("missing -o entries in argv: %v; got opts: %v", want, opts)
+	}
+}
+
+func TestBuildArgv_OptionsEmpty(t *testing.T) {
+	params := config.SSHParams{Host: "myhost"}
+	got := BuildArgv(params, ParsedArgs{})
+	for i, a := range got {
+		if a == "-o" && i+1 < len(got) && strings.Contains(got[i+1], "=") {
+			// ProxyCommand is fine; reject anything that looks like an Options entry.
+			if got[i+1] != "ProxyCommand=" && !strings.HasPrefix(got[i+1], "ProxyCommand=") {
+				t.Errorf("unexpected -o %q with no Options set", got[i+1])
+			}
+		}
+	}
+}
+
+func TestBuildArgv_OptionsDeterministicOrder(t *testing.T) {
+	params := config.SSHParams{
+		Host: "myhost",
+		Options: map[string]string{
+			"ConnectTimeout":      "5",
+			"BatchMode":           "yes",
+			"StrictHostKeyChecking": "no",
+		},
+	}
+
+	first := BuildArgv(params, ParsedArgs{})
+	second := BuildArgv(params, ParsedArgs{})
+
+	if strings.Join(first, " ") != strings.Join(second, " ") {
+		t.Errorf("BuildArgv is not deterministic:\nfirst:  %v\nsecond: %v", first, second)
+	}
+}

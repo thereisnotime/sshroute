@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 
@@ -70,10 +71,11 @@ func expandTilde(path string) string {
 // Order of arguments:
 //
 //	argv[0]  = RealSSH
-//	-p <port>   (if Port != 0)
-//	-i <key>    (if Key != "", ~ expanded)
-//	-l <user>   (params.User preferred; parsed.User used as fallback)
-//	-J <jump>   (if Jump != "")
+//	-p <port>          (if Port != 0)
+//	-i <key>           (if Key != "", ~ expanded)
+//	-l <user>          (params.User preferred; parsed.User used as fallback)
+//	-o Key=Value ...   (Options entries, sorted for determinism)
+//	-J <jump>          (if Jump != "")
 //	<params.Host>
 //	<parsed.Remaining...>
 func BuildArgv(params config.SSHParams, parsed ParsedArgs) []string {
@@ -93,6 +95,17 @@ func BuildArgv(params config.SSHParams, parsed ParsedArgs) []string {
 	}
 	if resolvedUser != "" {
 		argv = append(argv, "-l", resolvedUser)
+	}
+
+	if len(params.Options) > 0 {
+		keys := make([]string, 0, len(params.Options))
+		for k := range params.Options {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			argv = append(argv, "-o", k+"="+params.Options[k])
+		}
 	}
 
 	if params.ResolvedJump != nil {
