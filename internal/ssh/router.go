@@ -107,6 +107,14 @@ func resolveRecursive(cfg *config.Config, alias, network string, visited map[str
 			if len(override.Tags) > 0 {
 				merged.Tags = override.Tags
 			}
+			if len(override.Options) > 0 {
+				if merged.Options == nil {
+					merged.Options = make(map[string]string)
+				}
+				for k, v := range override.Options {
+					merged.Options[k] = v
+				}
+			}
 		}
 	}
 
