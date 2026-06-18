@@ -442,3 +442,22 @@ func TestResolve_OptionsNilWhenAbsent(t *testing.T) {
 		t.Errorf("Options = %v, want nil when not configured", params.Options)
 	}
 }
+
+func TestResolve_OptionsNetworkOnlyNoDefault(t *testing.T) {
+	// default has no options; network profile introduces options from scratch.
+	// This exercises the merged.Options == nil branch in resolveRecursive.
+	cfg := makeConfig(map[string]config.HostConfig{
+		"srv": {
+			"default": {Host: "1.2.3.4"},
+			"vpn": {
+				Host:    "10.0.0.1",
+				Options: map[string]string{"ConnectTimeout": "5"},
+			},
+		},
+	})
+
+	params := mustResolve(t, cfg, "srv", "vpn")
+	if params.Options["ConnectTimeout"] != "5" {
+		t.Errorf("Options[ConnectTimeout] = %q, want %q", params.Options["ConnectTimeout"], "5")
+	}
+}
