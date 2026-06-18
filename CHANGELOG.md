@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ---
 
+## [0.2.5](https://github.com/thereisnotime/sshroute/compare/v0.2.4...v0.2.5) (2026-06-18)
+
+
+### Features
+
+* add options field to SSHParams for arbitrary SSH -o flags ([#37](https://github.com/thereisnotime/sshroute/issues/37)) ([f4bd033](https://github.com/thereisnotime/sshroute/commit/f4bd0338f6e27feef474ab0b24ae2483e8ecb1b2))
+
 ## [0.1.1] - 2026-04-07
 
 ### Changed
