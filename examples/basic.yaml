@@ -17,8 +17,13 @@ hosts:
       port: 22
       user: alice
       key: ~/.ssh/id_ed25519
+      options:               # passed as SSH -o Key=Value flags
+        ConnectTimeout: "10"
+        ServerAliveInterval: "30"
     vpn:
       host: 10.8.0.50
       port: 22
       user: alice
       key: ~/.ssh/vpn_key
+      options:
+        ConnectTimeout: "5"  # tighter timeout on VPN

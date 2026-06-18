@@ -297,16 +297,36 @@ hosts:
       port: 22
       user: alice
       key: ~/.ssh/id_ed25519
+      options:            # optional — passed as SSH -o Key=Value flags
+        ConnectTimeout: "10"
+        ServerAliveInterval: "30"
     corp-vpn:
       host: 10.100.0.50
       port: 2222
       key: ~/.ssh/corp_key
       jump: bastion.corp.internal
+      options:
+        ConnectTimeout: "5"   # overrides default for this network only
     office:
       host: 192.168.1.50
 ```
 
 Every host must have a `default` profile. Network profiles only need to specify fields that differ from the default — unset fields inherit from `default`.
+
+### Host profile fields
+
+| Field | Type | Description |
+|---|---|---|
+| `host` | string | Hostname or IP address |
+| `port` | int | SSH port (default: 22) |
+| `user` | string | SSH user |
+| `key` | string | Path to identity file (`~` is expanded) |
+| `jump` | string | Jump host alias or `user@host` |
+| `options` | map | Arbitrary SSH `-o Key=Value` flags (e.g. `ConnectTimeout`, `StrictHostKeyChecking`) |
+| `comment` | string | Description shown in `sshroute list` |
+| `tags` | list | Tags for filtering with `sshroute list --tag` |
+
+`options` keys are merged from `default` into network profiles — network values override matching keys, non-overlapping keys are inherited.
 
 ## Network detection
 
