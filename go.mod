@@ -3,7 +3,7 @@ module github.com/thereisnotime/sshroute
 go 1.26.2
 
 require (
-	github.com/jedib0t/go-pretty/v6 v6.8.1
+	github.com/jedib0t/go-pretty/v6 v6.8.2
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/net v0.56.0
 	gopkg.in/yaml.v3 v3.0.1
