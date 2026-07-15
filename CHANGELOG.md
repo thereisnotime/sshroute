@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ---
 
+## [0.2.10](https://github.com/thereisnotime/sshroute/compare/v0.2.9...v0.2.10) (2026-07-15)
+
+
+### Bug Fixes
+
+* **update:** accept release-please signing identity + warn louder without cosign ([#55](https://github.com/thereisnotime/sshroute/issues/55)) ([93cb3fc](https://github.com/thereisnotime/sshroute/commit/93cb3fc66641e966778885a45a778e9f2d7da71c))
+
 ## [0.2.9](https://github.com/thereisnotime/sshroute/compare/v0.2.8...v0.2.9) (2026-07-15)
 
 
