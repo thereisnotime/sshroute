@@ -70,6 +70,7 @@ sshroute lets you define the routing logic declaratively, keep it in a versioned
 | Detects your current network | ❌ | ❌ | ❌ | ✅ |
 | Picks the best path automatically | ❌ | ❌ | ❌ | ✅ |
 | Falls back on connection failure | ❌ | ❌ | ✅ | ✅ |
+| Auto-reconnect + re-route on drop | ❌ | ⚠️ tunnel roams | ⚠️ via fixed proxy | ✅ |
 | One command per host, any location | ❌ | ⚠️ VPN must be up | ✅ | ✅ |
 | Config size for 10 hosts × 4 paths | 📄 ~600 lines | 📄 ~600 lines + VPN config | 📄 server-side config | 📄 ~60 lines |
 | Roaming mobile devices | ⚠️ manual aliases | ⚠️ VPN required | ✅ | ✅ |
@@ -211,7 +212,7 @@ Detect the active network, resolve SSH parameters for `alias`, and exec the real
 | `--reconnect` | `false` | Supervise the connection and automatically reconnect when it drops, re-detecting the active network and re-resolving the route each time |
 | `--reconnect-delay` | `2s` | Wait between reconnect attempts when `--reconnect` is set |
 
-With `--reconnect`, sshroute keeps ssh alive across dropped connections (laptop sleep, WiFi handoff, roaming between networks). Because it re-detects the network on every reconnect, it follows you onto a different route — for example, sleeping on the LAN and waking on a hotspot reconnects over the public route instead of retrying the now-unreachable LAN address. A clean logout (exit 0) or an auth/remote-command failure stops the loop; only genuine connection drops reconnect. Reconnect runs ssh as a subprocess (like `--fallback`), so sshroute stays resident for the session; `SIGINT`/`SIGTERM` tears it down. Session state across the blip is your multiplexer's job (tmux/zellij) — combine `--reconnect` with `-- tmux attach` or `-- zellij attach -c <name>` to land straight back in your session:
+With `--reconnect`, sshroute keeps ssh alive across dropped connections (laptop sleep, WiFi handoff, roaming between networks). Because it re-detects the network on every reconnect, it follows you onto a different route: for example, sleeping on the LAN and waking on a hotspot reconnects over the public route instead of retrying the now-unreachable LAN address. A clean logout (exit 0) or an auth/remote-command failure stops the loop; only genuine connection drops reconnect. Reconnect runs ssh as a subprocess (like `--fallback`), so sshroute stays resident for the session; `SIGINT`/`SIGTERM` tears it down. Session state across the blip is your multiplexer's job (tmux/zellij); combine `--reconnect` with `-- tmux attach` or `-- zellij attach -c <name>` to land straight back in your session:
 
 ```sh
 sshroute connect myserver --reconnect --fallback -- zellij attach -c work
