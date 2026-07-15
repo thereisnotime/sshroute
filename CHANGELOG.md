@@ -6,6 +6,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ---
 
+## [0.2.8](https://github.com/thereisnotime/sshroute/compare/v0.2.7...v0.2.8) (2026-07-15)
+
+
+### Features
+
+* add --reconnect for supervised auto-reconnect ([3fe54e2](https://github.com/thereisnotime/sshroute/commit/3fe54e21404009bd1b94c5ac08874fedd26dd903))
+* **connect:** add --reconnect to supervise and reconnect on drop ([4062175](https://github.com/thereisnotime/sshroute/commit/4062175d5dfe2bb5c3fa0ab19d2416e4b9ca5548))
+
+
+### Bug Fixes
+
+* **deps:** bump golang.org/x/text to v0.39.0 ([baef4bf](https://github.com/thereisnotime/sshroute/commit/baef4bfdf80c419ea06bee289eee6d7f8fa6f8ad))
+
+
+### Dependencies
+
+* bump go toolchain to 1.26.5 ([c17ea56](https://github.com/thereisnotime/sshroute/commit/c17ea5694f59ec61614e4dae83b0c0de4450c833))
+* **deps:** bump go modules and GitHub Actions to latest ([e656ea5](https://github.com/thereisnotime/sshroute/commit/e656ea5e69faf26487a8086076b426b942ab055d))
+
 ## [0.1.1] - 2026-04-07
 
 ### Changed
