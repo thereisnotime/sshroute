@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/thereisnotime/sshroute/internal/config"
+	"github.com/thereisnotime/sshroute/internal/ssh"
 )
 
 func withTempConfig(t *testing.T, cfg *config.Config) string {
@@ -320,6 +322,181 @@ func TestRunConnect_DryRun(t *testing.T) {
 
 	if err := runConnect(connectCmd, []string{"myserver"}); err != nil {
 		t.Fatalf("runConnect dry-run error: %v", err)
+	}
+}
+
+func TestRunConnect_ReconnectDryRun(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"myserver": {"default": {Host: "1.2.3.4", Port: 22, User: "alice"}},
+		},
+	})
+
+	reconnect = true
+	dryRun = true
+	defer func() { reconnect = false; dryRun = false }()
+
+	// Dry-run must print the resolved command and return without entering the loop.
+	if err := runConnect(connectCmd, []string{"myserver"}); err != nil {
+		t.Fatalf("runConnect --reconnect --dry-run error: %v", err)
+	}
+}
+
+func TestRunConnect_ReconnectDryRunFallback(t *testing.T) {
+	withTempConfig(t, &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"myserver": {
+				"default": {Host: "1.2.3.4", Port: 22, User: "alice"},
+				"vpn":     {Host: "10.0.0.1", Port: 22, User: "alice"},
+			},
+		},
+	})
+
+	reconnect = true
+	fallback = true
+	dryRun = true
+	defer func() { reconnect = false; fallback = false; dryRun = false }()
+
+	if err := runConnect(connectCmd, []string{"myserver"}); err != nil {
+		t.Fatalf("runConnect --reconnect --fallback --dry-run error: %v", err)
+	}
+}
+
+func TestConnectCmd_ReconnectFlags(t *testing.T) {
+	if connectCmd.Flags().Lookup("reconnect") == nil {
+		t.Error("connect command is missing the --reconnect flag")
+	}
+	if connectCmd.Flags().Lookup("reconnect-delay") == nil {
+		t.Error("connect command is missing the --reconnect-delay flag")
+	}
+}
+
+// TestRunConnectReconnect_ResolveError drives the non-dry-run reconnect path (signal
+// context, attempt closure, Supervise) to its error exit: a host with no profile for
+// the detected network makes the first attempt fail to resolve, so the loop returns
+// the error immediately instead of spinning.
+func TestRunConnectReconnect_ResolveError(t *testing.T) {
+	dryRun = false
+	fallback = false
+	cfg := &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"srv": {"vpn": {Host: "1.2.3.4"}}, // no "default" profile for the detected network
+		},
+	}
+	if err := runConnectReconnect(cfg, "srv", ssh.ParsedArgs{}); err == nil {
+		t.Error("expected a resolve error in reconnect mode")
+	}
+}
+
+// TestRunConnectReconnect_CleanExit drives the non-dry-run reconnect happy path: a
+// single-route attempt whose (stubbed) ssh exits 0 must stop supervision and return
+// nil without reconnecting.
+func TestRunConnectReconnect_CleanExit(t *testing.T) {
+	dryRun = false
+	fallback = false
+	old := ssh.RealSSH
+	ssh.RealSSH = "/bin/true"
+	defer func() { ssh.RealSSH = old }()
+	cfg := &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"srv": {"default": {Host: "1.2.3.4", Port: 22, User: "u"}},
+		},
+	}
+	if err := runConnectReconnect(cfg, "srv", ssh.ParsedArgs{}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestAttemptOnce_SingleRouteSuccess(t *testing.T) {
+	cfg := &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"srv": {"default": {Host: "1.2.3.4", Port: 22, User: "u"}},
+		},
+	}
+	old := ssh.RealSSH
+	ssh.RealSSH = "/bin/true"
+	fallback = false
+	defer func() { ssh.RealSSH = old; fallback = false }()
+
+	code, err := attemptOnce(context.Background(), cfg, "srv", "default", ssh.ParsedArgs{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if code != 0 {
+		t.Errorf("code = %d, want 0", code)
+	}
+}
+
+func TestAttemptOnce_SingleRouteResolveError(t *testing.T) {
+	cfg := &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"srv": {"vpn": {Host: "1.2.3.4"}}, // no "default" profile to resolve
+		},
+	}
+	fallback = false
+	defer func() { fallback = false }()
+
+	if _, err := attemptOnce(context.Background(), cfg, "srv", "default", ssh.ParsedArgs{}); err == nil {
+		t.Error("expected resolve error for missing default profile")
+	}
+}
+
+func TestAttemptOnce_FallbackNonRetryable(t *testing.T) {
+	cfg := &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"srv": {"default": {Host: "1.2.3.4", Port: 22, User: "u"}},
+		},
+	}
+	old := ssh.RealSSH
+	ssh.RealSSH = "/bin/false" // exit 1 — a non-255 failure must stop, not retry
+	fallback = true
+	defer func() { ssh.RealSSH = old; fallback = false }()
+
+	code, err := attemptOnce(context.Background(), cfg, "srv", "default", ssh.ParsedArgs{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if code != 1 {
+		t.Errorf("code = %d, want 1", code)
+	}
+}
+
+func TestAttemptOnce_FallbackAllConnectFail(t *testing.T) {
+	dir := t.TempDir()
+	script := filepath.Join(dir, "ssh255.sh")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nexit 255\n"), 0o600); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	if err := os.Chmod(script, 0o700); err != nil {
+		t.Fatalf("setup chmod: %v", err)
+	}
+	cfg := &config.Config{
+		Networks: make(map[string]config.NetworkDefinition),
+		Hosts: map[string]config.HostConfig{
+			"srv": {
+				"default": {Host: "1.2.3.4", Port: 22, User: "u"},
+				"vpn":     {Host: "10.0.0.1", Port: 22, User: "u"},
+			},
+		},
+	}
+	old := ssh.RealSSH
+	ssh.RealSSH = script
+	fallback = true
+	defer func() { ssh.RealSSH = old; fallback = false }()
+
+	code, err := attemptOnce(context.Background(), cfg, "srv", "default", ssh.ParsedArgs{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if code != ssh.SSHConnectFailure {
+		t.Errorf("code = %d, want %d", code, ssh.SSHConnectFailure)
 	}
 }
 

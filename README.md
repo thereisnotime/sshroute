@@ -205,6 +205,18 @@ Create a starter config file with commented examples. Fails if the file already 
 
 Detect the active network, resolve SSH parameters for `alias`, and exec the real SSH binary. Any extra arguments after the alias are passed through to SSH unchanged.
 
+| Flag | Default | Description |
+|---|---|---|
+| `--fallback` | `false` | Try every profile in priority order, retrying the next one only on a connection failure (exit 255) |
+| `--reconnect` | `false` | Supervise the connection and automatically reconnect when it drops, re-detecting the active network and re-resolving the route each time |
+| `--reconnect-delay` | `2s` | Wait between reconnect attempts when `--reconnect` is set |
+
+With `--reconnect`, sshroute keeps ssh alive across dropped connections (laptop sleep, WiFi handoff, roaming between networks). Because it re-detects the network on every reconnect, it follows you onto a different route — for example, sleeping on the LAN and waking on a hotspot reconnects over the public route instead of retrying the now-unreachable LAN address. A clean logout (exit 0) or an auth/remote-command failure stops the loop; only genuine connection drops reconnect. Reconnect runs ssh as a subprocess (like `--fallback`), so sshroute stays resident for the session; `SIGINT`/`SIGTERM` tears it down. Session state across the blip is your multiplexer's job (tmux/zellij) — combine `--reconnect` with `-- tmux attach` or `-- zellij attach -c <name>` to land straight back in your session:
+
+```sh
+sshroute connect myserver --reconnect --fallback -- zellij attach -c work
+```
+
 ### `list`
 
 List all configured hosts and the SSH parameters that would be used on the current network. Supports `-o table|json|yaml`.
