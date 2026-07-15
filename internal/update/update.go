@@ -127,7 +127,10 @@ func Run(ctx context.Context, current string, opts Options) (bool, error) {
 		if verified {
 			fmt.Fprintln(opts.Out, "cosign signature verified")
 		} else {
-			fmt.Fprintln(opts.Out, "cosign not found; skipped signature verification (sha256 still enforced)")
+			fmt.Fprintln(opts.Out, "WARNING: cosign is not installed, so the release signature was NOT verified.")
+			fmt.Fprintln(opts.Out, "         The download is checked for integrity via sha256 against checksums.txt")
+			fmt.Fprintln(opts.Out, "         (fetched over HTTPS), but its provenance is not cryptographically proven.")
+			fmt.Fprintln(opts.Out, "         Install cosign (https://github.com/sigstore/cosign) for full verification.")
 		}
 	}
 
@@ -296,10 +299,12 @@ func verifyCosign(ctx context.Context, checksums, bundleURL string) (bool, error
 		return false, err
 	}
 
-	// The keyless signing identity is the release workflow at the tag ref.
+	// The keyless signing identity is a release workflow of this repo. Releases are
+	// built either by the release-please workflow (running on refs/heads/main) or by
+	// the tag-push Release workflow (refs/tags/v*), so accept both.
 	cmd := exec.CommandContext(ctx, cosign, "verify-blob", // #nosec G204 -- cosign path from LookPath; args are constants and temp file paths
 		"--bundle", bundlePath,
-		"--certificate-identity-regexp", `^https://github\.com/thereisnotime/sshroute/\.github/workflows/.+@refs/tags/v.+$`,
+		"--certificate-identity-regexp", `^https://github\.com/thereisnotime/sshroute/\.github/workflows/.+@refs/(heads/main|tags/v.+)$`,
 		"--certificate-oidc-issuer", "https://token.actions.githubusercontent.com",
 		checksumsPath,
 	)

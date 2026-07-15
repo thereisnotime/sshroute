@@ -191,6 +191,7 @@ func fullReleaseServer(t *testing.T, tag string, archive []byte, checksumOverrid
 }
 
 func TestRun_FullFlow(t *testing.T) {
+	fakeCosign(t, 0) // shadow any real cosign so the signature path is deterministic
 	fakeBin := []byte("\x7fELF new sshroute binary")
 	srv := fullReleaseServer(t, "v9.9.9", makeArchive(t, "sshroute", fakeBin), "")
 	defer srv.Close()
@@ -214,6 +215,34 @@ func TestRun_FullFlow(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "sha256 verified") {
 		t.Errorf("output = %q, want a sha256-verified message", out.String())
+	}
+	if !strings.Contains(out.String(), "cosign signature verified") {
+		t.Errorf("output = %q, want a cosign-verified message", out.String())
+	}
+}
+
+func TestRun_WarnsWithoutCosign(t *testing.T) {
+	// Point PATH at an empty dir so cosign cannot be found.
+	t.Setenv("PATH", t.TempDir())
+	fakeBin := []byte("\x7fELF binary")
+	srv := fullReleaseServer(t, "v9.9.9", makeArchive(t, "sshroute", fakeBin), "")
+	defer srv.Close()
+
+	oldBase, oldApply := apiBase, applyBinary
+	apiBase = srv.URL
+	applyBinary = func([]byte) error { return nil }
+	defer func() { apiBase = oldBase; applyBinary = oldApply }()
+
+	var out bytes.Buffer
+	applied, err := Run(context.Background(), "v0.0.1", Options{Out: &out})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !applied {
+		t.Error("update should still apply on sha256 alone when cosign is absent")
+	}
+	if !strings.Contains(out.String(), "WARNING") || !strings.Contains(out.String(), "cosign is not installed") {
+		t.Errorf("output = %q, want a no-cosign warning", out.String())
 	}
 }
 
