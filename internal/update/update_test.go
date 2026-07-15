@@ -316,6 +316,27 @@ func TestVerifyCosign(t *testing.T) {
 	})
 }
 
+func TestDownload_HTTPError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+	if _, err := download(context.Background(), srv.URL, io.Discard); err == nil {
+		t.Error("expected an error on a 404 download")
+	}
+}
+
+func TestVerifyCosign_BundleDownloadFails(t *testing.T) {
+	fakeCosign(t, 0) // cosign is present, but the bundle can't be fetched
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer srv.Close()
+	if _, err := verifyCosign(context.Background(), "checksums", srv.URL); err == nil {
+		t.Error("expected an error when the cosign bundle download fails")
+	}
+}
+
 func TestLatestRelease_HTTPError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
