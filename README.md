@@ -282,6 +282,18 @@ The `SSHROUTE_SCP` environment variable overrides the `scp` binary used.
 
 Print the version, git commit, build date, and Go runtime info.
 
+### `update`
+
+Update sshroute in place to the latest GitHub release. It downloads the archive for your platform, verifies its sha256 against `checksums.txt`, and — if [`cosign`](https://github.com/sigstore/cosign) is installed — verifies the release's cosign signature, before atomically replacing the running binary.
+
+```sh
+sshroute update            # download, verify, and install the latest release
+sshroute update --check    # only report whether a newer version is available
+sshroute update --force    # reinstall the latest even if already current
+```
+
+If sha256 (or cosign, when present) verification fails, the update aborts and the binary is left untouched. This targets installs of the release binary; if you installed via `go install` or a package manager, update with that instead.
+
 ## Config file
 
 Default location: `~/.config/sshroute/config.yaml`
