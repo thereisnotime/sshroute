@@ -47,5 +47,9 @@ changelog:
     exclude: ['^docs:', '^test:', '^ci:']
 
 release:
+  # release-please creates the GitHub release first, then this job uploads the
+  # artifacts to it. keep-existing avoids clobbering that release (and still
+  # creates one on a manually pushed tag, where none exists yet).
+  mode: keep-existing
   footer: |
     **Full changelog**: See [CHANGELOG.md](https://github.com/thereisnotime/sshroute/blob/main/CHANGELOG.md)
