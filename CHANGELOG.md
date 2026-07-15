@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ---
 
+## [0.2.9](https://github.com/thereisnotime/sshroute/compare/v0.2.8...v0.2.9) (2026-07-15)
+
+
+### Features
+
+* **update:** add self-update command with sha256 + cosign verification ([#52](https://github.com/thereisnotime/sshroute/issues/52)) ([651bb70](https://github.com/thereisnotime/sshroute/commit/651bb70b91d6d387aa5f8bf2b41b84c566f265fb))
+
 ## [0.2.8](https://github.com/thereisnotime/sshroute/compare/v0.2.7...v0.2.8) (2026-07-15)
 
 
