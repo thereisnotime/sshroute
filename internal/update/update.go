@@ -39,6 +39,9 @@ var (
 	// applyBinary installs the verified binary; indirected so tests can exercise
 	// the full download/verify/extract flow without replacing the test executable.
 	applyBinary = Apply
+	// executablePath resolves the running binary; indirected so Apply is testable
+	// against a temp file rather than the test binary.
+	executablePath = os.Executable
 )
 
 // Release is the subset of the GitHub release API that we use.
@@ -316,7 +319,7 @@ func verifyCosign(ctx context.Context, checksums, bundleURL string) (bool, error
 
 // Apply atomically replaces the running executable with newBin.
 func Apply(newBin []byte) error {
-	exe, err := os.Executable()
+	exe, err := executablePath()
 	if err != nil {
 		return err
 	}
@@ -360,24 +363,39 @@ func applyTo(exe string, newBin []byte) error {
 		return err
 	}
 
+	replace := replaceRename
 	if runtime.GOOS == "windows" {
-		old := exe + ".old"
-		_ = os.Remove(old)
-		if err := os.Rename(exe, old); err != nil {
-			return err
-		}
-		if err := os.Rename(tmpName, exe); err != nil {
-			_ = os.Rename(old, exe) // roll back
-			return err
-		}
-		cleanup = false
-		_ = os.Remove(old)
-		return nil
+		replace = replaceMoveAside
 	}
-
-	if err := os.Rename(tmpName, exe); err != nil {
-		return fmt.Errorf("replacing %s: %w", exe, err)
+	if err := replace(exe, tmpName); err != nil {
+		return err
 	}
 	cleanup = false
+	return nil
+}
+
+// replaceRename swaps tmp in for exe with a single atomic rename. Works on
+// Linux/macOS, where a running binary can be replaced this way.
+func replaceRename(exe, tmp string) error {
+	if err := os.Rename(tmp, exe); err != nil {
+		return fmt.Errorf("replacing %s: %w", exe, err)
+	}
+	return nil
+}
+
+// replaceMoveAside swaps tmp in for exe by first moving the current file aside,
+// which Windows requires because a running image cannot be renamed over. It rolls
+// back on failure. The logic is rename-based, so it is exercised on any platform.
+func replaceMoveAside(exe, tmp string) error {
+	old := exe + ".old"
+	_ = os.Remove(old)
+	if err := os.Rename(exe, old); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, exe); err != nil {
+		_ = os.Rename(old, exe) // roll back
+		return err
+	}
+	_ = os.Remove(old)
 	return nil
 }

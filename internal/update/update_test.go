@@ -382,3 +382,75 @@ func TestApplyTo(t *testing.T) {
 		t.Errorf("expected only the replaced binary, found %d entries", len(entries))
 	}
 }
+
+func TestApply(t *testing.T) {
+	dir := t.TempDir()
+	fake := filepath.Join(dir, "sshroute")
+	if err := os.WriteFile(fake, []byte("old"), 0o755); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	old := executablePath
+	executablePath = func() (string, error) { return fake, nil } // point Apply at a temp file
+	defer func() { executablePath = old }()
+
+	if err := Apply([]byte("new binary")); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	got, err := os.ReadFile(fake) // #nosec G304 -- test-controlled temp path
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if string(got) != "new binary" {
+		t.Errorf("content = %q, want %q", got, "new binary")
+	}
+}
+
+func TestReplaceMoveAside(t *testing.T) {
+	dir := t.TempDir()
+	exe := filepath.Join(dir, "bin")
+	tmp := filepath.Join(dir, "tmpnew")
+	if err := os.WriteFile(exe, []byte("old"), 0o755); err != nil {
+		t.Fatalf("setup exe: %v", err)
+	}
+	if err := os.WriteFile(tmp, []byte("new"), 0o755); err != nil {
+		t.Fatalf("setup tmp: %v", err)
+	}
+
+	if err := replaceMoveAside(exe, tmp); err != nil {
+		t.Fatalf("replaceMoveAside: %v", err)
+	}
+	got, err := os.ReadFile(exe) // #nosec G304 -- test-controlled temp path
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if string(got) != "new" {
+		t.Errorf("content = %q, want %q", got, "new")
+	}
+	if _, err := os.Stat(exe + ".old"); !os.IsNotExist(err) {
+		t.Error(".old sidecar should have been cleaned up")
+	}
+}
+
+func TestReplaceRename_Error(t *testing.T) {
+	dir := t.TempDir()
+	tmp := filepath.Join(dir, "tmp")
+	if err := os.WriteFile(tmp, []byte("x"), 0o755); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	// Target directory does not exist, so the rename must fail.
+	if err := replaceRename(filepath.Join(dir, "missing", "bin"), tmp); err == nil {
+		t.Error("expected an error renaming into a missing directory")
+	}
+}
+
+func TestReplaceMoveAside_Error(t *testing.T) {
+	dir := t.TempDir()
+	tmp := filepath.Join(dir, "tmp")
+	if err := os.WriteFile(tmp, []byte("x"), 0o755); err != nil {
+		t.Fatalf("setup: %v", err)
+	}
+	// The target does not exist, so moving it aside must fail.
+	if err := replaceMoveAside(filepath.Join(dir, "does-not-exist"), tmp); err == nil {
+		t.Error("expected an error when the target is missing")
+	}
+}
