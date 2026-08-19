@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ---
 
+## [0.2.11](https://github.com/thereisnotime/sshroute/compare/v0.2.10...v0.2.11) (2026-08-19)
+
+
+### Bug Fixes
+
+* **deps:** bump Go to 1.26.6, update actions and deps ([#66](https://github.com/thereisnotime/sshroute/issues/66)) ([aec2946](https://github.com/thereisnotime/sshroute/commit/aec29469e5f10e840c699ae268b9eea7e0d7875e))
+
 ## [0.2.10](https://github.com/thereisnotime/sshroute/compare/v0.2.9...v0.2.10) (2026-07-15)
 
 
