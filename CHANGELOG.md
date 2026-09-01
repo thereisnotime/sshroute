@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ---
 
+## [0.2.12](https://github.com/thereisnotime/sshroute/compare/v0.2.11...v0.2.12) (2026-09-01)
+
+
+### Dependencies
+
+* **deps:** bump actions/attest-build-provenance from 4.1.1 to 4.2.2 ([996b6cb](https://github.com/thereisnotime/sshroute/commit/996b6cb3581160cc589c2e6a68e68c44e23dd38b))
+* **deps:** bump actions/attest-build-provenance from 4.1.1 to 4.2.2 ([b3c9a76](https://github.com/thereisnotime/sshroute/commit/b3c9a765056401eb9e11d4c59c637fd12dad8651))
+* **deps:** bump github/codeql-action/analyze from 4.37.2 to 4.37.8 ([a1eead5](https://github.com/thereisnotime/sshroute/commit/a1eead561999943e63c4d40bd49f5e815aa9a085))
+* **deps:** bump github/codeql-action/analyze from 4.37.2 to 4.37.8 ([f60fc09](https://github.com/thereisnotime/sshroute/commit/f60fc09d275af8e75dfc0f3254b3e8fc0017aa2d))
+* **deps:** bump github/codeql-action/autobuild from 4.37.2 to 4.37.8 ([cd92577](https://github.com/thereisnotime/sshroute/commit/cd92577610ad9aa0abe2885e2bf29791f5bd27c5))
+* **deps:** bump github/codeql-action/autobuild from 4.37.2 to 4.37.8 ([fd0d7d9](https://github.com/thereisnotime/sshroute/commit/fd0d7d95ad5dec86929ef8f11c04538d563b0464))
+* **deps:** bump github/codeql-action/init from 4.37.2 to 4.37.8 ([5ce8781](https://github.com/thereisnotime/sshroute/commit/5ce878157fdd2bd978724282b2452db463982453))
+* **deps:** bump github/codeql-action/init from 4.37.2 to 4.37.8 ([b939241](https://github.com/thereisnotime/sshroute/commit/b9392419d4e74db38efbabbbb13a07fd695da41b))
+* **deps:** bump github/codeql-action/upload-sarif ([f0828f4](https://github.com/thereisnotime/sshroute/commit/f0828f43de567c6711eb5f92d47b9dfdecb088ed))
+* **deps:** bump github/codeql-action/upload-sarif from 4.37.2 to 4.37.8 ([3909039](https://github.com/thereisnotime/sshroute/commit/39090396dacaa52175bf5990c184dba79286f1ae))
+
 ## [0.2.11](https://github.com/thereisnotime/sshroute/compare/v0.2.10...v0.2.11) (2026-08-19)
 
 
