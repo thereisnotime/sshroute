@@ -69,6 +69,11 @@ profiles in priority order on SSH connection failure (`exit 255`). This means:
 
 You always get the best available path without thinking about it.
 
+The [route cache](route-cache.md) remembers which path worked for each host on
+the current network and tries it first next time, so a host that is only
+reachable over the internet path does not pay for the LAN and WireGuard
+timeouts on every connect.
+
 ---
 
 ## The profile inheritance gotcha

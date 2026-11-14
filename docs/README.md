@@ -7,5 +7,6 @@
 | [Shadow mode](shadow-mode.md) | Transparent SSH replacement — git, rsync, scp, Ansible |
 | [Shell completion](shell-completion.md) | Dynamic alias completion for bash, zsh, fish |
 | [Scripting and automation](scripting.md) | Using `resolve` and `copy` in scripts and CI pipelines |
+| [Route cache](route-cache.md) | How fallback remembers the last working route, state file format for other tools |
 
 For installation, config reference, and basic usage see the [main README](../README.md).
