@@ -14,6 +14,8 @@ import (
 //   - route and interface checks have a non-empty Match field.
 //   - ping checks have a non-empty Host field.
 //   - exec checks have a non-empty Command field.
+//   - cache.ttl and cache.lock_timeout (when set) parse as durations.
+//   - cache.scope (when set) is "network" or "alias".
 func Validate(cfg *Config) error {
 	var errs []error
 
@@ -29,6 +31,8 @@ func Validate(cfg *Config) error {
 	for hostName, hostCfg := range cfg.Hosts {
 		errs = append(errs, validateHost(hostName, hostCfg)...)
 	}
+
+	errs = append(errs, validateCache(cfg.Cache)...)
 
 	return errors.Join(errs...)
 }
@@ -75,5 +79,25 @@ func validateHost(hostName string, hostCfg HostConfig) []error {
 		}
 	}
 
+	return errs
+}
+
+func validateCache(c CacheConfig) []error {
+	var errs []error
+	if c.TTL != "" {
+		if _, err := ParseDuration(c.TTL); err != nil {
+			errs = append(errs, fmt.Errorf("cache.ttl: %w", err))
+		}
+	}
+	if c.LockTimeout != "" {
+		if _, err := ParseDuration(c.LockTimeout); err != nil {
+			errs = append(errs, fmt.Errorf("cache.lock_timeout: %w", err))
+		}
+	}
+	switch c.Scope {
+	case "", CacheScopeNetwork, CacheScopeAlias:
+	default:
+		errs = append(errs, fmt.Errorf("cache.scope: unknown scope %q (must be network or alias)", c.Scope))
+	}
 	return errs
 }
