@@ -208,7 +208,8 @@ Detect the active network, resolve SSH parameters for `alias`, and exec the real
 
 | Flag | Default | Description |
 |---|---|---|
-| `--fallback` | `false` | Try every profile in priority order, retrying the next one only on a connection failure (exit 255) |
+| `--fallback` | `false` | Try every profile in priority order, retrying the next one only on a connection failure (exit 255). The route that worked last time is tried first, see [Route cache](#route-cache) |
+| `--no-cache` | `false` | Ignore and do not update the route cache for this run (same as `SSHROUTE_CACHE=0`) |
 | `--reconnect` | `false` | Supervise the connection and automatically reconnect when it drops, re-detecting the active network and re-resolving the route each time |
 | `--reconnect-delay` | `2s` | Wait between reconnect attempts when `--reconnect` is set |
 
@@ -266,6 +267,17 @@ Print the SSH parameters that would be used for `alias` on the current network. 
 | Flag | Default | Description |
 |---|---|---|
 | `--network` | auto-detect | Network profile to resolve against |
+| `--fallback` | `false` | Show every profile in the order `connect --fallback` would try them, with the source of each position (`cache`, `detected`, `priority`, `default`) |
+| `--no-cache` | `false` | Build the `--fallback` order without the route cache |
+
+```sh
+sshroute resolve myserver --fallback          # table, plus the cache decision on stderr
+sshroute resolve myserver --fallback -o json  # one object per profile: order, profile, source, cached_at, host, ...
+```
+
+### `cache show [alias]` / `cache clear [alias]` / `cache path`
+
+Inspect or reset the [route cache](#route-cache). `show` lists the cached routes per alias (the `*` row is the last success on any network, the other rows are per detected network) with their status: `fresh`, `expired`, `failed` (the profile failed to connect since), or `unknown-profile` (no longer in the config). Supports `-o table|json|yaml`. `clear` removes one alias, or everything without an argument. `path` prints the state file location.
 
 ### `copy <alias> <src> <dst>`
 
@@ -353,6 +365,34 @@ Every host must have a `default` profile. Network profiles only need to specify 
 
 `options` keys are merged from `default` into network profiles — network values override matching keys, non-overlapping keys are inherited.
 
+### Route cache
+
+In fallback mode (`connect --fallback`, `--reconnect --fallback`, and shadow mode with `SSHROUTE_FALLBACK=1`) sshroute remembers which profile connected for each host and tries it first next time. Without it, a host whose working route is third in the order pays two `ConnectTimeout`s on every connect. If the cached route stops working, that costs one failed attempt: sshroute records the failure and continues through the normal order, so it is never slower than before by more than that one attempt.
+
+A profile counts as connected when ssh exits with anything other than 255, so a failing remote command still records its route. Plain `connect` without `--fallback` never reads or writes the cache: it hands the process over to ssh, and a stale entry there would just fail.
+
+The cache is on by default. Every setting is optional:
+
+```yaml
+cache:
+  enabled: true        # default true
+  path: ~/.local/state/sshroute/state.json   # default, see below
+  ttl: 7d              # how long a successful route is trusted; Go durations plus "d"; 0 = never expires
+  scope: network       # network (default): remember per alias + detected network; alias: per alias only
+  lock_timeout: 1s     # max wait for the state file lock before skipping the write
+```
+
+| Override | Effect |
+|---|---|
+| `--no-cache` (`connect`, `resolve`) | Disable for one run. Wins over everything else |
+| `SSHROUTE_CACHE=0` / `false` / `off` / `no` | Disable without changing argv (wrappers, shadow mode) |
+| `SSHROUTE_CACHE=1` / `true` / `on` / `yes` | Enable even if `cache.enabled: false` |
+| `SSHROUTE_CACHE_PATH=/path/state.json` | Use a different state file. Wins over `cache.path` |
+
+Default state file: `$XDG_STATE_HOME/sshroute/state.json` if `XDG_STATE_HOME` is set, otherwise `~/.local/state/sshroute/state.json` on Linux, macOS and Termux, and `%LOCALAPPDATA%\sshroute\state.json` on Windows. `sshroute cache path` prints the effective one.
+
+To see what the cache is doing: `sshroute resolve <alias> --fallback`, `sshroute connect <alias> --fallback --dry-run`, or `-v` for hit/miss/write log lines. The state file format, concurrency guarantees and how to read it from other tools are in [docs/route-cache.md](docs/route-cache.md).
+
 ## Network detection
 
 Networks are evaluated in `priority` order (lowest value first). Alphabetical order breaks ties. The first network whose checks all pass is used; if none match, `default` applies.
@@ -390,6 +430,7 @@ In-depth guides are in [`docs/`](docs/):
 | [Shadow mode](docs/shadow-mode.md) | Transparent SSH replacement — git, rsync, scp, Ansible |
 | [Shell completion](docs/shell-completion.md) | Dynamic alias completion for bash, zsh, fish |
 | [Scripting and automation](docs/scripting.md) | Using `resolve` and `copy` in scripts and CI pipelines |
+| [Route cache](docs/route-cache.md) | How fallback remembers the last working route, state file format for other tools |
 
 ## Output formats
 

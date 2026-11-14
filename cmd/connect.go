@@ -72,35 +72,40 @@ func runConnect(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// Fallback mode: try profiles in priority order, retry only on connection failure (exit 255).
-	order := ssh.ResolveOrder(cfg, alias, detectedNetwork)
-	for i, profileName := range order {
-		params, err := ssh.Resolve(cfg, alias, profileName)
-		if err != nil {
-			slog.Debug("connect: fallback resolve error, skipping", "profile", profileName, "error", err)
-			continue
-		}
-		slog.Debug("connect: fallback trying profile", "profile", profileName, "host", params.Host, "attempt", i+1)
-		argv := ssh.BuildArgv(params, parsed)
-		if dryRun {
-			ssh.DryRun(argv)
-			continue
-		}
-		code, err := ssh.Run(argv)
-		if err != nil {
-			return fmt.Errorf("running ssh: %w", err)
-		}
-		if code == 0 {
-			return nil
-		}
-		if code != ssh.SSHConnectFailure {
-			// Non-connection failure (auth, remote command) — don't retry.
-			os.Exit(code)
-		}
-		fmt.Fprintf(os.Stderr, "sshroute: profile %q failed (connection error), trying next\n", profileName)
+	// Fallback mode: try profiles in order (cached route first), retry only on
+	// connection failure (exit 255).
+	opts := cacheOptions(cfg)
+	plan := planFallback(cfg, alias, detectedNetwork, opts)
+	if dryRun {
+		printDryRunPlan(os.Stdout, plan)
+		dryRunOrder(cfg, alias, plan.Order, parsed)
+		return nil
 	}
-
+	code, attempts, err := ssh.RunFallback(cfg, alias, plan.Order, parsed, ssh.Run)
+	recordFallback(opts, alias, detectedNetwork, attempts)
+	if err != nil {
+		return err
+	}
+	if code == 0 {
+		return nil
+	}
+	if code != ssh.SSHConnectFailure {
+		// Non-connection failure (auth, remote command) — don't retry.
+		os.Exit(code)
+	}
 	return fmt.Errorf("all profiles exhausted for host %q", alias)
+}
+
+// dryRunOrder prints the ssh command for every profile in order.
+func dryRunOrder(cfg *config.Config, alias string, order []ssh.OrderEntry, parsed ssh.ParsedArgs) {
+	for _, e := range order {
+		params, err := ssh.Resolve(cfg, alias, e.Profile)
+		if err != nil {
+			slog.Debug("dry-run: resolve error, skipping", "profile", e.Profile, "error", err)
+			continue
+		}
+		ssh.DryRun(ssh.BuildArgv(params, parsed))
+	}
 }
 
 // runConnectReconnect supervises the ssh subprocess and reconnects whenever it exits
@@ -113,13 +118,9 @@ func runConnectReconnect(cfg *config.Config, alias string, parsed ssh.ParsedArgs
 			return fmt.Errorf("detecting network: %w", err)
 		}
 		if fallback {
-			for _, profileName := range ssh.ResolveOrder(cfg, alias, detectedNetwork) {
-				params, err := ssh.Resolve(cfg, alias, profileName)
-				if err != nil {
-					continue
-				}
-				ssh.DryRun(ssh.BuildArgv(params, parsed))
-			}
+			plan := planFallback(cfg, alias, detectedNetwork, cacheOptions(cfg))
+			printDryRunPlan(os.Stdout, plan)
+			dryRunOrder(cfg, alias, plan.Order, parsed)
 			return nil
 		}
 		params, err := ssh.Resolve(cfg, alias, detectedNetwork)
@@ -157,9 +158,10 @@ func runConnectReconnect(cfg *config.Config, alias string, parsed ssh.ParsedArgs
 }
 
 // attemptOnce runs one connection for the detected network — a single route, or the
-// fallback try-order when --fallback is set — using a context-bound subprocess so a
-// signal tears the child down. It returns ssh's exit code: 0 on success, the first
-// non-255 code encountered, or 255 if every profile failed to connect.
+// fallback try-order (cached route first) when --fallback is set — using a
+// context-bound subprocess so a signal tears the child down. It returns ssh's exit
+// code: 0 on success, the first non-255 code encountered, or 255 if every profile
+// failed to connect.
 func attemptOnce(ctx context.Context, cfg *config.Config, alias, netw string, parsed ssh.ParsedArgs) (int, error) {
 	if !fallback {
 		params, err := ssh.Resolve(cfg, alias, netw)
@@ -168,27 +170,24 @@ func attemptOnce(ctx context.Context, cfg *config.Config, alias, netw string, pa
 		}
 		return ssh.RunContext(ctx, ssh.BuildArgv(params, parsed))
 	}
-	for _, profileName := range ssh.ResolveOrder(cfg, alias, netw) {
-		params, err := ssh.Resolve(cfg, alias, profileName)
-		if err != nil {
-			slog.Debug("reconnect: fallback resolve error, skipping", "profile", profileName, "error", err)
-			continue
-		}
-		code, err := ssh.RunContext(ctx, ssh.BuildArgv(params, parsed))
-		if err != nil {
-			return -1, fmt.Errorf("running ssh: %w", err)
-		}
-		if code != ssh.SSHConnectFailure {
-			return code, nil
-		}
-		fmt.Fprintf(os.Stderr, "sshroute: profile %q failed (connection error), trying next\n", profileName)
+	opts := cacheOptions(cfg)
+	plan := planFallback(cfg, alias, netw, opts)
+	run := func(argv []string) (int, error) { return ssh.RunContext(ctx, argv) }
+	code, attempts, err := ssh.RunFallback(cfg, alias, plan.Order, parsed, run)
+	if ctx.Err() == nil {
+		// Do not record attempts cut short by SIGINT/SIGTERM.
+		recordFallback(opts, alias, netw, attempts)
 	}
-	return ssh.SSHConnectFailure, nil
+	if err != nil {
+		return -1, err
+	}
+	return code, nil
 }
 
 func init() {
 	rootCmd.AddCommand(connectCmd)
 	connectCmd.Flags().BoolVar(&fallback, "fallback", false, "try all profiles in priority order on connection failure")
 	connectCmd.Flags().BoolVar(&reconnect, "reconnect", false, "supervise the connection and reconnect on drop, re-detecting the route each time")
+	connectCmd.Flags().BoolVar(&noCache, "no-cache", false, "ignore and do not update the fallback route cache (also SSHROUTE_CACHE=0)")
 	connectCmd.Flags().DurationVar(&reconnectDelay, "reconnect-delay", 2*time.Second, "wait between reconnect attempts when --reconnect is set")
 }

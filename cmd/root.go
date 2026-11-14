@@ -27,6 +27,18 @@ var rootCmd = &cobra.Command{
 	Long:          "sshroute routes SSH connections to different hosts/ports/keys based on your active network or VPN.",
 	SilenceErrors: true,
 	SilenceUsage:  true,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		if verbose || os.Getenv("SSHROUTE_VERBOSE") == "1" {
+			enableDebugLogging()
+		}
+	},
+}
+
+// enableDebugLogging sends debug-level slog output to stderr.
+func enableDebugLogging() {
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})))
 }
 
 // Execute is the main entrypoint. Detects shadow mode (called as "ssh") or runs Cobra.
@@ -58,9 +70,7 @@ func runShadowMode() {
 	// Configure slog if verbose is set. In shadow mode we parse os.Args
 	// directly, so check the environment variable as a fallback.
 	if verbose || os.Getenv("SSHROUTE_VERBOSE") == "1" {
-		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-			Level: slog.LevelDebug,
-		})))
+		enableDebugLogging()
 	}
 
 	passthrough := func() {
@@ -120,28 +130,22 @@ func runShadowMode() {
 		os.Exit(0)
 	}
 
-	// 8. If SSHROUTE_FALLBACK is set, try all profiles in priority order.
+	// 8. If SSHROUTE_FALLBACK is set, try all profiles in order (cached route
+	// first unless SSHROUTE_CACHE=0).
 	if os.Getenv("SSHROUTE_FALLBACK") == "1" {
-		order := ssh.ResolveOrder(cfg, parsed.Alias, detectedNetwork)
-		for _, profileName := range order {
-			p, err := ssh.Resolve(cfg, parsed.Alias, profileName)
-			if err != nil {
-				continue
-			}
-			slog.Debug("shadow mode: fallback trying profile", "profile", profileName, "host", p.Host)
-			a := ssh.BuildArgv(p, parsed)
-			code, err := ssh.Run(a)
-			if err != nil {
-				passthrough()
-				return
-			}
-			if code == 0 {
-				return
-			}
-			if code != ssh.SSHConnectFailure {
-				os.Exit(code)
-			}
-			fmt.Fprintf(os.Stderr, "sshroute: profile %q failed (connection error), trying next\n", profileName)
+		opts := cacheOptions(cfg)
+		plan := planFallback(cfg, parsed.Alias, detectedNetwork, opts)
+		code, attempts, err := ssh.RunFallback(cfg, parsed.Alias, plan.Order, parsed, ssh.Run)
+		recordFallback(opts, parsed.Alias, detectedNetwork, attempts)
+		if err != nil {
+			passthrough()
+			return
+		}
+		if code == 0 {
+			return
+		}
+		if code != ssh.SSHConnectFailure {
+			os.Exit(code)
 		}
 		fmt.Fprintf(os.Stderr, "sshroute: all profiles exhausted\n")
 		os.Exit(ssh.SSHConnectFailure)

@@ -52,4 +52,26 @@ type Config struct {
 	Networks  map[string]NetworkDefinition `yaml:"networks"`
 	Hosts     map[string]HostConfig        `yaml:"hosts"`
 	SSHBinary string                       `yaml:"ssh_binary,omitempty"`
+	Cache     CacheConfig                  `yaml:"cache,omitempty"`
+}
+
+// Route cache scopes. See CacheConfig.Scope.
+const (
+	CacheScopeNetwork = "network"
+	CacheScopeAlias   = "alias"
+)
+
+// CacheConfig controls the fallback route cache. Every field is optional; the
+// zero value means "use the default" (cache on, default path, 7d TTL, network scope).
+type CacheConfig struct {
+	// Enabled turns the cache on or off. nil means on.
+	Enabled *bool `yaml:"enabled,omitempty"`
+	// Path is the state file location. Empty means the platform default.
+	Path string `yaml:"path,omitempty"`
+	// TTL is how long a successful route is trusted, e.g. "7d", "12h". "0" never expires.
+	TTL string `yaml:"ttl,omitempty"`
+	// Scope is "network" (key by alias + detected network) or "alias" (key by alias only).
+	Scope string `yaml:"scope,omitempty"`
+	// LockTimeout bounds how long a write waits for the state file lock before giving up.
+	LockTimeout string `yaml:"lock_timeout,omitempty"`
 }

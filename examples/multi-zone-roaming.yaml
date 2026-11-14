@@ -23,6 +23,17 @@
 #   All xxssh-* wrappers call `sshroute connect <host> --fallback`,
 #   which tries profiles in priority order on SSH connection failure.
 #   This means you get the best available path automatically.
+#
+# Route cache:
+#   Fallback remembers which profile worked per host and detected network
+#   and tries it first next time (see docs/route-cache.md). It is on by
+#   default; the section below only spells out the defaults.
+
+cache:
+    enabled: true
+    ttl: 7d
+    scope: network
+    lock_timeout: 1s
 
 networks:
     # Direct zone-a LAN — lowest latency for zone-a hosts
