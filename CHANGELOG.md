@@ -6,6 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ---
 
+## [0.2.13](https://github.com/thereisnotime/sshroute/compare/v0.2.12...v0.2.13) (2026-11-14)
+
+
+### Features
+
+* **cache:** add route cache state file with locking and config ([3d3a508](https://github.com/thereisnotime/sshroute/commit/3d3a508097d71c8f70acee6be1799ccadb8a4183))
+* **connect:** remember the last working route in fallback mode ([2c173bb](https://github.com/thereisnotime/sshroute/commit/2c173bb107032dff72d78e3bc096781063b7bbf2))
+* **connect:** try the last working route first in fallback mode ([ce52d00](https://github.com/thereisnotime/sshroute/commit/ce52d0076d0bceebeecd850853561c119168a84a))
+
+
+### Bug Fixes
+
+* **deps:** bump Go to 1.27.4 and update all modules ([34c5756](https://github.com/thereisnotime/sshroute/commit/34c5756e7a8433734dc18ae8c7ce424826a23131))
+* **deps:** bump Go to 1.27.4 and update all modules ([a308a3b](https://github.com/thereisnotime/sshroute/commit/a308a3bfac5fb5563e5b1ee5094efab97a432dae))
+
 ## [0.2.12](https://github.com/thereisnotime/sshroute/compare/v0.2.11...v0.2.12) (2026-09-01)
 
 
